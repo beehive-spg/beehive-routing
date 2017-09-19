@@ -48,8 +48,47 @@ but should be brought to the users attention, or `{:error, message}` if it is in
 
 See the moduledoc for `Conform.Schema.Validator` for more details and examples.
 """
-[extends: [],
- import: [],
- mappings: [],
- transforms: [],
- validators: []]
+[
+  extends: [],
+  import: [],
+  mappings: [
+    "logger.level": [
+      commented: false,
+      datatype: :atom,
+      default: :warn,
+      doc: "Provide documentation for logger.level here.",
+      hidden: false,
+      to: "logger.level"
+    ],
+    "logger.truncate": [
+      commented: false,
+      datatype: :integer,
+      default: 4096,
+      doc: "Provide documentation for logger.truncate here.",
+      hidden: false,
+      to: "logger.truncate"
+    ],
+    "logger.compile_time_purge_level": [
+      commented: false,
+      datatype: :atom,
+      default: :info,
+      doc: "Provide documentation for logger.compile_time_purge_level here.",
+      hidden: false,
+      to: "logger.compile_time_purge_level"
+    ],
+    "logger.backends": [
+      commented: false,
+      datatype: [
+        list: :atom
+      ],
+      default: [
+        :console
+      ],
+      doc: "Provide documentation for logger.backends here.",
+      hidden: false,
+      to: "logger.backends"
+    ]
+  ],
+  transforms: [],
+  validators: []
+]
