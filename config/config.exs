@@ -6,3 +6,7 @@ config :logger,
 	compile_time_purge_level: :info, #for compile time
 	backends: [:console]
 
+config :redix,
+	host: "localhost",
+	port: 6379 # standard
+

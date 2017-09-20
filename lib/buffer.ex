@@ -1,18 +1,13 @@
 defmodule Buffer do
-  @moduledoc """
-  Documentation for Buffer.
-  """
+    use Application
+    require Logger
 
-  @doc """
-  Hello world.
+    def start _type, _args do
+        Logger.info("Application started...")
+        Buffer.Redixcontrol.start_link(name: Buffer.Redixcontrol)
+    end
 
-  ## Examples
-
-      iex> Buffer.hello
-      :world
-
-  """
-  def hello do
-    :world
-  end
+    def stop _args do
+        Logger.info("Application stopped...")
+    end
 end
