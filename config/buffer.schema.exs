@@ -87,6 +87,22 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
       doc: "Provide documentation for logger.backends here.",
       hidden: false,
       to: "logger.backends"
+    ],
+    "redix.host": [
+      commented: false,
+      datatype: :binary,
+      default: "localhost",
+      doc: "Provide documentation for redix.host here.",
+      hidden: false,
+      to: "redix.host"
+    ],
+    "redix.port": [
+      commented: false,
+      datatype: :integer,
+      default: 6379,
+      doc: "Provide documentation for redix.port here.",
+      hidden: false,
+      to: "redix.port"
     ]
   ],
   transforms: [],
