@@ -8,5 +8,5 @@ config :logger,
 
 config :redix,
 	host: "localhost",
-	port: 6379 # standard
+	port: 6379 # default
 

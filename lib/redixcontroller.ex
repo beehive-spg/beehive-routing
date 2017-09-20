@@ -19,7 +19,7 @@ defmodule Buffer.Redixcontrol do
 		Supervisor.init(pool, strategy: :one_for_one)
 	end
 
-	def query(command) do
+	def query(command) when is_list(command) do
 		name = :"redix_#{randomize()}"
 
 		Logger.info("Executing #{command} on instance #{name}")

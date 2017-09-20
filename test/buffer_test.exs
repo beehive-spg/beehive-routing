@@ -1,8 +1,10 @@
 defmodule BufferTest do
-  use ExUnit.Case
-  doctest Buffer
+	use ExUnit.Case
+	doctest Buffer
 
-  test "TRUE" do
-    assert true == true
-  end
+	# Just to not have nothing here
+
+	test "TRUE" do
+		assert true == true
+	end
 end
