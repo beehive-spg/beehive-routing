@@ -4,7 +4,14 @@ defmodule Buffer do
 
     def start _type, _args do
         Logger.info("Application started...")
-        redix = Buffer.Redixcontrol.start_link(name: Buffer.Redixcontrol)
+
+        children = [
+        	Buffer.Secretary.child_spec([]),
+        	Buffer.Redixcontrol.child_spec([])
+        ]
+
+		opts = [strategy: :one_for_one, name: Buffer]
+		Supervisor.start_link(children, opts)
     end
 
     def stop _args do

@@ -7,7 +7,6 @@ defmodule RedixcontrolTest do
 	# Make sure the Redis Server is started
 
 	test "Worker creation and operability." do
-		Buffer.Redixcontrol.start_link(name: Buffer.Redixcontrol)
 		assert Buffer.Redixcontrol.query(["PING"]) == "PONG"
 	end
 
@@ -15,7 +14,6 @@ defmodule RedixcontrolTest do
 		key = "fav_color"
 		value = "green"
 
-		Buffer.Redixcontrol.start_link(name: Buffer.Redixcontrol)
 		Buffer.Redixcontrol.query(["SET", "#{key}", "#{value}"])
 		result = Buffer.Redixcontrol.query(["GET", "#{key}"])
 		Buffer.Redixcontrol.query(["DEL", "#{key}"])
