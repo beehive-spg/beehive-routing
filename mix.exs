@@ -13,7 +13,7 @@ defmodule Buffer.Mixfile do
 
   def application do
     [
-      applications: [:logger, :redix],
+      applications: [:logger, :redix, :timex],
       mod: {Buffer, []}
     ]
   end
@@ -30,7 +30,7 @@ defmodule Buffer.Mixfile do
 
       # Job Scheduling
       {:quantum, ">= 2.1.0"},
-      {:timex, "~> 3.0"}
+      {:timex, "~> 3.1"}
     ]
   end
 end
