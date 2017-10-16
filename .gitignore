@@ -21,3 +21,6 @@ erl_crash.dump
 
 # MacOS
 .DS_Store
+
+# Development
+notes.md

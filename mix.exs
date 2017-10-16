@@ -11,15 +11,13 @@ defmodule Buffer.Mixfile do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      applications: [:logger, :redix],
+      applications: [:logger, :redix, :timex],
       mod: {Buffer, []}
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       # Source Management
@@ -27,9 +25,12 @@ defmodule Buffer.Mixfile do
       {:exrm, "~> 1.0", override: true},
       {:conform_exrm, "~> 1.0"},
 
-      # Other
-      # {:redix, "~> 0.6.1"} # Redis Hex
-      {:redix, git: "https://github.com/whatyouhide/redix.git"}
+      # Redis
+      {:redix, git: "https://github.com/whatyouhide/redix.git"},
+
+      # Job Scheduling
+      {:quantum, ">= 2.1.0"},
+      {:timex, "~> 3.1"}
     ]
   end
 end
