@@ -154,6 +154,10 @@ defmodule Buffer.Redixcontrol do
         [["RPUSH", "active_jobs", "#{head}"]] ++ commands_insert_array(tail)
     end
 
+    defp sorted_array([], item) do
+        [item]
+    end
+
     defp sorted_array([head | tail], item) do
         head_db = query ["HGET", "#{head}", "time"]
         item_db = query ["HGET", "#{item}", "time"] # TODO pass this as a parameter during the recursion -> stays the same
