@@ -141,6 +141,7 @@ defmodule Buffer.Redixcontrol do
         active_ids = query ["LRANGE", "active_jobs", "0", "-1"]
         array =  sorted_array(active_ids, item)
         commands = [["MULTI"]]
+        commands = commands ++ [["DEL", "active_jobs"]]
         commands = commands ++ commands_insert_array(array)
         commands = commands ++ [["EXEC"]]
         pipe commands
