@@ -140,7 +140,6 @@ defmodule Buffer.Redixcontrol do
     def insert_sorted(item) do
         active_ids = query ["LRANGE", "active_jobs", "0", "-1"]
         array =  sorted_array(active_ids, item)
-        Logger.log :debug, "Sorted array: #{array}"
         commands = [["MULTI"]]
         commands = commands ++ commands_insert_array(array)
         commands = commands ++ [["EXEC"]]
@@ -152,8 +151,6 @@ defmodule Buffer.Redixcontrol do
     end
 
     defp commands_insert_array([head | tail]) do
-        Logger.log :debug, "Head: #{head}, Tail: #{tail}"
-        IO.puts tail
         [["RPUSH", "active_jobs", "#{head}"]] ++ commands_insert_array(tail)
     end
 
