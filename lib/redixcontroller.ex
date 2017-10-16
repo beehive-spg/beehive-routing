@@ -54,8 +54,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     # TODO maybe merge the two methods for each type is entry to make it more DRY
-    # NOTE pass a parametert hat says arr or dep
-    def add_arrival(time, drone, hive, is_delivery) do
+    def add_arrival(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
@@ -66,15 +65,15 @@ defmodule Buffer.Redixcontrol do
         commands = commands ++ [["HSET", "arr_#{id}", "drone", "#{drone}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "hive", "#{hive}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "is_delivery", "#{is_delivery}"]]
-        commands = commands ++ [["RPUSH", "active_jobs", "arr_#{id}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
 
+        insert_sorted("arr_#{id}")
         Logger.debug "Arrival successfully added"
         id
     end
 
-    def add_departure(time, drone, hive, is_delivery) do
+    def add_departure(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
         Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("dep")
 
@@ -83,10 +82,10 @@ defmodule Buffer.Redixcontrol do
         commands = commands ++ [["HSET", "dep_#{id}", "drone", "#{drone}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "hive", "#{hive}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "is_delivery", "#{is_delivery}"]]
-        commands = commands ++ [["RPUSH", "active_jobs", "dep_#{id}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
 
+        insert_sorted("dep_#{id}")
         Logger.debug "Departure successfully added"
         id
     end
@@ -115,7 +114,7 @@ defmodule Buffer.Redixcontrol do
         Logger.debug "Departure deleted"
     end
 
-    def active_jobs() do # TODO this does not work as expected (response is an atom)
+    def active_jobs() do
         query ["LRANGE", "active_jobs", "0", "-1"]
     end
 
@@ -130,7 +129,6 @@ defmodule Buffer.Redixcontrol do
         resp
     end
 
-    # TODO are they really necessary?
     def get(key, worker \\ -1) do
         query ["GET", "#{key}"], worker
     end
@@ -139,14 +137,49 @@ defmodule Buffer.Redixcontrol do
         query ["SET", "#{key}", "#{value}"], worker
     end
 
-    defp insert_sorted(list, item) do
-        # TODO fancy insert algo
+    def insert_sorted(item) do
+        active_ids = query ["LRANGE", "active_jobs", "0", "-1"]
+        array =  sorted_array(active_ids, item)
+        Logger.log :debug, "Sorted array: #{array}"
+        commands = [["MULTI"]]
+        commands = commands ++ commands_insert_array(array)
+        commands = commands ++ [["EXEC"]]
+        pipe commands
+    end
+
+    defp commands_insert_array([head | []]) do
+        [["RPUSH", "active_jobs", "#{head}"]]
+    end
+
+    defp commands_insert_array([head | tail]) do
+        Logger.log :debug, "Head: #{head}, Tail: #{tail}"
+        IO.puts tail
+        [["RPUSH", "active_jobs", "#{head}"]] ++ commands_insert_array(tail)
+    end
+
+    defp sorted_array([head | tail], item) do
+        head_db = query ["HGET", "#{head}", "time"]
+        item_db = query ["HGET", "#{item}", "time"] # TODO pass this as a parameter during the recursion -> stays the same
+        diff = compare_time(head_db, item_db)
+        if diff > 0 do # head time is bigger than item time -> item needs to be before head
+            if tail == [] do
+                [item | head]
+            end
+            [item, head | tail]
+        else # item time is bigger than head time -> needs to be after head
+            if tail == [] do # if there is no other item behind head
+                [head | item]
+            end
+            [head | sorted_array(tail, item)]
+        end
     end
 
     # Returns >0 if time2 is smaller (needs to be executed earlier)
     # Returns 0 if times are equal (in seconds)
     # Returns <0 if time1 is smaller (needs to be executed earlier)
-    defp compare_time(time1, time2) do
+    # NOTE this is to be used to compare times saved in the redis db. If you want to set time1/2 to Timex.now
+    # just comment Timex.parse!
+    defp compare_time(time1, time2) when is_bitstring(time1) and is_bitstring(time2) do
         time1 = Timex.parse!(time1, Application.fetch_env!(:timex, :datetime_format))
         time2 = Timex.parse!(time2, Application.fetch_env!(:timex, :datetime_format))
         Timex.diff(time1, time2, :seconds)

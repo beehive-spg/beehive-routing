@@ -10,7 +10,7 @@ config :redix,
 	host: "localhost",
 	port: 6379 # default
 
-config :buffer,
+config :timex,
 	datetime_format: "{ISO:Extended}"
 
 # TODO check if it is possible to set Vienna as timezone
