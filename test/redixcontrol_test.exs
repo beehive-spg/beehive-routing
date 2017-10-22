@@ -4,7 +4,7 @@ defmodule RedixcontrolTest do
     use ExUnit.Case, async: true
     doctest Buffer.Redixcontrol
 
-    # Make sure the Redis Server is started
+    # NOTE Make sure the Redis Server is started
 
     test "Worker creation and operability." do
         assert Buffer.Redixcontrol.query(["PING"]) == "PONG"
@@ -30,7 +30,7 @@ defmodule RedixcontrolTest do
         id = Buffer.Redixcontrol.add_arrival(time, drone, hive, is_delivery)
         resp = Buffer.Redixcontrol.query ["HGET", "arr_#{id}", "drone"]
         assert resp == drone
-        Buffer.Redixcontrol.remove_arrival(id)
+        Buffer.Redixcontrol.remove_arrival("arr_#{id}")
         assert Buffer.Redixcontrol.query(["HGET", "arr_#{id}", "drone"]) == nil
     end
 
@@ -43,7 +43,7 @@ defmodule RedixcontrolTest do
         id = Buffer.Redixcontrol.add_departure(time, drone, hive, is_delivery)
         resp = Buffer.Redixcontrol.query ["HGET", "dep_#{id}", "drone"]
         assert resp == drone
-        Buffer.Redixcontrol.remove_departure(id)
+        Buffer.Redixcontrol.remove_departure("dep_#{id}")
         assert Buffer.Redixcontrol.query(["HGET", "dep_#{id}", "drone"]) == nil
     end
 

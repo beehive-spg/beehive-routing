@@ -90,24 +90,24 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def remove_arrival(id) when is_bitstring(id) do
-        Logger.debug "Deleting arrival for key: arr_#{id}"
+    def remove_arrival(key) when is_bitstring(key) do
+        Logger.debug "Deleting arrival for key: #{key}"
 
         commands = [["MULTI"]]
-        commands = commands ++ [["DEL", "arr_#{id}"]] # remove hash from db
-        commands = commands ++ [["LREM", "active_jobs", "-1", "arr_#{id}"]] # set key inactive
+        commands = commands ++ [["DEL", key]] # remove hash from db
+        commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
         commands = commands ++ [["EXEC"]]
         pipe commands
 
         Logger.debug "Arrival deleted"
     end
 
-    def remove_departure(id) when is_bitstring(id) do
-        Logger.debug "Deleting departure for key: dep_#{id}"
+    def remove_departure(key) when is_bitstring(key) do
+        Logger.debug "Deleting departure for key: #{key}"
 
         commands = [["MULTI"]]
-        commands = commands ++ [["DEL", "dep_#{id}"]] # remove hash from db
-        commands = commands ++ [["LREM", "active_jobs", "-1", "dep_#{id}"]] # set key inactive
+        commands = commands ++ [["DEL", key]] # remove hash from db
+        commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
         commands = commands ++ [["EXEC"]]
         pipe commands
 
@@ -138,7 +138,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def insert_sorted(item) do
-        active_ids = query ["LRANGE", "active_jobs", "0", "-1"]
+        active_ids = query ["LRANGE", "active_jobs", "0", "-1"] # TODO potential misinformation due to no transaction
         array =  sorted_array(active_ids, item)
         commands = [["MULTI"]]
         commands = commands ++ [["DEL", "active_jobs"]]
@@ -188,6 +188,6 @@ defmodule Buffer.Redixcontrol do
     end
 
     defp randomize() do
-        rem(System.unique_integer([:positive]), 3)
+        rem(System.unique_integer([:positive]), 1)
     end
 end
