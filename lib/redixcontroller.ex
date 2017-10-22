@@ -58,7 +58,6 @@ defmodule Buffer.Redixcontrol do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
-        # TODO make the list sorted (use isert_sorted)
 
         commands = [["MULTI"]]
         commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
