@@ -118,14 +118,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def get_next_id(from) when is_bitstring(from) do
-        worker = randomize()
-        query ["MULTI"], worker # start transaction
-
-        get "#{from}_next_id", worker
-        query ["INCR", "#{from}_next_id"], worker
-
-        [resp | _] = query ["EXEC"], worker # commit
-        resp
+        query ["INCR", "#{from}_next_id"]
     end
 
     def get(key, worker \\ -1) do
@@ -137,8 +130,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def insert_sorted(item) do
-        active_ids = query ["LRANGE", "active_jobs", "0", "-1"] # TODO potential misinformation due to no transaction
-        array =  sorted_array(active_ids, item)
+        array =  sorted_array(active_jobs, item)
         commands = [["MULTI"]]
         commands = commands ++ [["DEL", "active_jobs"]]
         commands = commands ++ commands_insert_array(array)
@@ -187,6 +179,6 @@ defmodule Buffer.Redixcontrol do
     end
 
     defp randomize() do
-        rem(System.unique_integer([:positive]), 1)
+        rem(System.unique_integer([:positive]), 3)
     end
 end
