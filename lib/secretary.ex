@@ -7,10 +7,6 @@ defmodule Buffer.Secretary do
 
     def check do
         #Logger.debug "Time checking ..."
-        # get closest job from redis
-        # calculate difference
-        # if now -> execute_job
-        # else nothing
         #jobs = []
         jobs = Buffer.Redixcontrol.active_jobs
         if jobs != [] do
