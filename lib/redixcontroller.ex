@@ -54,7 +54,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     # TODO maybe merge the two methods for each type is entry to make it more DRY
-    def add_arrival(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
+    def add_arrival(time, drone, hive, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
@@ -72,7 +72,7 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def add_departure(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
+    def add_departure(time, drone, hive, is_delivery) do
         Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("dep")
 

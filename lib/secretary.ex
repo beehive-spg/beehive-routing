@@ -11,8 +11,8 @@ defmodule Buffer.Secretary do
         # calculate difference
         # if now -> execute_job
         # else nothing
-        jobs = []
-        #jobs = Buffer.Redixcontrol.active_jobs
+        #jobs = []
+        jobs = Buffer.Redixcontrol.active_jobs
         if jobs != [] do
             [next | _] = jobs
             Logger.debug "Next job: #{next}"

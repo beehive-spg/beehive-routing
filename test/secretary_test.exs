@@ -1,7 +1,7 @@
 ExUnit.start
 
 defmodule SecretaryTest do
-    use ExUnit.Case, async: true
+    use ExUnit.Case, async: false
     doctest Buffer.Secretary
 
     test "Executing arrival" do
