@@ -54,7 +54,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     # TODO maybe merge the two methods for each type is entry to make it more DRY
-    def add_arrival(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
+    def add_arrival(time, drone, hive, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
@@ -72,7 +72,7 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def add_departure(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
+    def add_departure(time, drone, hive, is_delivery) do
         Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
         id = get_next_id("dep")
 
@@ -118,14 +118,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def get_next_id(from) when is_bitstring(from) do
-        worker = randomize()
-        query ["MULTI"], worker # start transaction
-
-        get "#{from}_next_id", worker
-        query ["INCR", "#{from}_next_id"], worker
-
-        [resp | _] = query ["EXEC"], worker # commit
-        resp
+        query ["INCR", "#{from}_next_id"]
     end
 
     def get(key, worker \\ -1) do
@@ -137,8 +130,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def insert_sorted(item) do
-        active_ids = query ["LRANGE", "active_jobs", "0", "-1"] # TODO potential misinformation due to no transaction
-        array =  sorted_array(active_ids, item)
+        array =  sorted_array(active_jobs, item)
         commands = [["MULTI"]]
         commands = commands ++ [["DEL", "active_jobs"]]
         commands = commands ++ commands_insert_array(array)
@@ -187,6 +179,6 @@ defmodule Buffer.Redixcontrol do
     end
 
     defp randomize() do
-        rem(System.unique_integer([:positive]), 1)
+        rem(System.unique_integer([:positive]), 3)
     end
 end
