@@ -53,6 +53,24 @@ defmodule Buffer.Redixcontrol do
         resp
     end
 
+    # route = %{:is_delivery => true/false, :route => [%{from => "Vienna", to => "Berlin", dep_time => "Mon", arr_time => "Tue", drone => "512"}, ...]}
+    def add_route(route) is_map(route) do
+        delivery = route[:is_delivery]
+        ids = insert_hops_db(route[:route], delivery)
+    end
+
+    defp insert_hops_db([head | tail], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]] ++ insert_hops_db(tail, is_delivery)
+    end
+
+    defp insert_hops_db([head | []], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]]
+    end
+
     # TODO maybe merge the two methods for each type is entry to make it more DRY
     def add_arrival(time, drone, hive, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
