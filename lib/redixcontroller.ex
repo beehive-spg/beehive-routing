@@ -53,6 +53,37 @@ defmodule Buffer.Redixcontrol do
         resp
     end
 
+    # route = %{:is_delivery => true/false, :route => [%{from => "Vienna", to => "Berlin", dep_time => "Mon", arr_time => "Tue", drone => "512"}, ...]}
+    def add_route(route) when is_map(route) do
+        delivery = route[:is_delivery]
+        ids = insert_hops_db(route[:route], delivery)
+        link_hops(ids)
+      ids
+    end
+
+    defp insert_hops_db([head | []], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]]
+    end
+
+    defp insert_hops_db([head | tail], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]] ++ insert_hops_db(tail, is_delivery)
+    end
+
+    defp link_hops([head | []]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+    end
+
+    defp link_hops([head | tail]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+        link_hops(tail)
+    end
+
     # TODO maybe merge the two methods for each type is entry to make it more DRY
     def add_arrival(time, drone, hive, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
@@ -129,11 +160,22 @@ defmodule Buffer.Redixcontrol do
         query ["SET", "#{key}", "#{value}"], worker
     end
 
+    defp wait_for_not_locked() do
+        accessible = query ["SETNX", "locked", "true"]
+        IO.puts accessible
+        if accessible == 0 do
+            :timer.sleep(10)
+            wait_for_not_locked()
+        end
+    end
+
     def insert_sorted(item) do
-        array =  sorted_array(active_jobs, item)
+        Task.async(fn -> wait_for_not_locked() end) |> Task.await
+        array =  sorted_array(active_jobs(), item)
         commands = [["MULTI"]]
         commands = commands ++ [["DEL", "active_jobs"]]
         commands = commands ++ commands_insert_array(array)
+        commands = commands ++ [["DEL", "locked"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
     end

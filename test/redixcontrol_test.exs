@@ -47,5 +47,21 @@ defmodule RedixcontrolTest do
         assert Buffer.Redixcontrol.query(["HGET", "dep_#{id}", "drone"]) == nil
     end
 
+    test "Adding routes" do
+        route = %{:is_delivery => true, :route => [%{:from => "10", :to => "11", :dep_time => "2017-01-01 10:00:00", :arr_time => "2017-01-01 10:10:00", :drone => "512"}, %{:from => "11", :to => "12", :dep_time => "2017-01-01 10:20:00", :arr_time => "2017-01-01 10:35:00", :drone => "26"}]}
+        ids = Buffer.Redixcontrol.add_route(route)
+        assert Buffer.Redixcontrol.query(["HGET", "dep_#{Enum.at(Enum.at(ids, 0), 0)}", "arrival"]) == "arr_#{Enum.at(Enum.at(ids, 0), 1)}"
+        cleanup(ids)
+    end
 
+    defp cleanup([head | []]) do
+        Buffer.Redixcontrol.remove_departure("dep_#{Enum.at(head, 0)}")
+        Buffer.Redixcontrol.remove_arrival("arr_#{Enum.at(head, 1)}")
+    end
+
+    defp cleanup([head | tail]) do
+        Buffer.Redixcontrol.remove_departure("dep_#{Enum.at(head, 0)}")
+        Buffer.Redixcontrol.remove_arrival("arr_#{Enum.at(head, 1)}")
+        cleanup(tail)
+    end
 end
