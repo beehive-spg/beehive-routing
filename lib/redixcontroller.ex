@@ -63,6 +63,7 @@ defmodule Buffer.Redixcontrol do
         # [h | t] = Enum.reverse(list)
         # do something with t
         # method(Enum.reverse(h)) --> to restore normal order
+        link_hops(ids)
     end
 
     defp insert_hops_db([head | []], is_delivery) do
