@@ -57,7 +57,12 @@ defmodule Buffer.Redixcontrol do
     def add_route(route) when is_map(route) do
         delivery = route[:is_delivery]
         ids = insert_hops_db(route[:route], delivery)
-        # TODO link departures and arrivals to each other
+        # Here goes the code for: link departures and arrivals to each other
+        # -currently not wanted, but there was a reason why I thought about that, not sure atm-
+        # Access last item of a list:
+        # [h | t] = Enum.reverse(list)
+        # do something with t
+        # method(Enum.reverse(h)) --> to restore normal order
     end
 
     defp insert_hops_db([head | []], is_delivery) do
