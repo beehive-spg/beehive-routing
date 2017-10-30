@@ -77,6 +77,17 @@ defmodule Buffer.Redixcontrol do
         [[dep_id, arr_id]] ++ insert_hops_db(tail, is_delivery)
     end
 
+    defp link_hops([head | []]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+    end
+
+    defp link_hops([head | tail]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+        link_hops(tail)
+    end
+
     # TODO maybe merge the two methods for each type is entry to make it more DRY
     def add_arrival(time, drone, hive, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
