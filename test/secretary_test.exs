@@ -5,7 +5,7 @@ defmodule SecretaryTest do
     doctest Buffer.Secretary
 
     test "Executing arrival" do
-        time = "#{Timex.now}"
+        time = "1990-01-01 00:00:00"
         drone = "12"
         hive = "12"
         is_delivery = true
@@ -16,7 +16,7 @@ defmodule SecretaryTest do
     end
 
     test "Executing departure" do
-        time = "#{Timex.now}"
+        time = "2000-01-01 00:00:00"
         drone = "12"
         hive = "12"
         is_delivery = true
