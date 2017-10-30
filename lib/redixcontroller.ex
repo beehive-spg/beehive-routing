@@ -53,17 +53,47 @@ defmodule Buffer.Redixcontrol do
         resp
     end
 
+    # route = %{:is_delivery => true/false, :route => [%{from => "Vienna", to => "Berlin", dep_time => "Mon", arr_time => "Tue", drone => "512"}, ...]}
+    def add_route(route) when is_map(route) do
+        delivery = route[:is_delivery]
+        ids = insert_hops_db(route[:route], delivery)
+        link_hops(ids)
+      ids
+    end
+
+    defp insert_hops_db([head | []], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]]
+    end
+
+    defp insert_hops_db([head | tail], is_delivery) do
+        dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
+        arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
+        [[dep_id, arr_id]] ++ insert_hops_db(tail, is_delivery)
+    end
+
+    defp link_hops([head | []]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+    end
+
+    defp link_hops([head | tail]) do
+        command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
+        query command
+        link_hops(tail)
+    end
+
     # TODO maybe merge the two methods for each type is entry to make it more DRY
-    def add_arrival(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
-        Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
+    def add_arrival(time, drone, location, is_delivery) do
+        Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
-        # TODO make the list sorted (use isert_sorted)
 
         commands = [["MULTI"]]
         commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "drone", "#{drone}"]]
-        commands = commands ++ [["HSET", "arr_#{id}", "hive", "#{hive}"]]
+        commands = commands ++ [["HSET", "arr_#{id}", "location", "#{location}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "is_delivery", "#{is_delivery}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
@@ -73,14 +103,14 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def add_departure(time, drone, hive, is_delivery) when is_bitstring(time) and is_bitstring(drone) and is_bitstring(hive) and (is_boolean(is_delivery) or is_bitstring(is_delivery)) do
-        Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
+    def add_departure(time, drone, location, is_delivery) do
+        Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
         id = get_next_id("dep")
 
         commands = [["MULTI"]]
         commands = commands ++ [["HSET", "dep_#{id}", "time", "#{time}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "drone", "#{drone}"]]
-        commands = commands ++ [["HSET", "dep_#{id}", "hive", "#{hive}"]]
+        commands = commands ++ [["HSET", "dep_#{id}", "location", "#{location}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "is_delivery", "#{is_delivery}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
@@ -90,24 +120,24 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def remove_arrival(id) when is_bitstring(id) do
-        Logger.debug "Deleting arrival for key: arr_#{id}"
+    def remove_arrival(key) when is_bitstring(key) do
+        Logger.debug "Deleting arrival for key: #{key}"
 
         commands = [["MULTI"]]
-        commands = commands ++ [["DEL", "arr_#{id}"]] # remove hash from db
-        commands = commands ++ [["LREM", "active_jobs", "-1", "arr_#{id}"]] # set key inactive
+        commands = commands ++ [["DEL", key]] # remove hash from db
+        commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
         commands = commands ++ [["EXEC"]]
         pipe commands
 
         Logger.debug "Arrival deleted"
     end
 
-    def remove_departure(id) when is_bitstring(id) do
-        Logger.debug "Deleting departure for key: dep_#{id}"
+    def remove_departure(key) when is_bitstring(key) do
+        Logger.debug "Deleting departure for key: #{key}"
 
         commands = [["MULTI"]]
-        commands = commands ++ [["DEL", "dep_#{id}"]] # remove hash from db
-        commands = commands ++ [["LREM", "active_jobs", "-1", "dep_#{id}"]] # set key inactive
+        commands = commands ++ [["DEL", key]] # remove hash from db
+        commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
         commands = commands ++ [["EXEC"]]
         pipe commands
 
@@ -119,14 +149,7 @@ defmodule Buffer.Redixcontrol do
     end
 
     def get_next_id(from) when is_bitstring(from) do
-        worker = randomize()
-        query ["MULTI"], worker # start transaction
-
-        get "#{from}_next_id", worker
-        query ["INCR", "#{from}_next_id"], worker
-
-        [resp | _] = query ["EXEC"], worker # commit
-        resp
+        query ["INCR", "#{from}_next_id"]
     end
 
     def get(key, worker \\ -1) do
@@ -137,12 +160,22 @@ defmodule Buffer.Redixcontrol do
         query ["SET", "#{key}", "#{value}"], worker
     end
 
+    defp wait_for_not_locked() do
+        accessible = query ["SETNX", "locked", "true"]
+        IO.puts accessible
+        if accessible == 0 do
+            :timer.sleep(10)
+            wait_for_not_locked()
+        end
+    end
+
     def insert_sorted(item) do
-        active_ids = query ["LRANGE", "active_jobs", "0", "-1"]
-        array =  sorted_array(active_ids, item)
+        Task.async(fn -> wait_for_not_locked() end) |> Task.await
+        array =  sorted_array(active_jobs(), item)
         commands = [["MULTI"]]
         commands = commands ++ [["DEL", "active_jobs"]]
         commands = commands ++ commands_insert_array(array)
+        commands = commands ++ [["DEL", "locked"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
     end
