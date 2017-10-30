@@ -24,10 +24,10 @@ defmodule RedixcontrolTest do
     test "Adding and removing arrivals" do
         time = "2017-01-01 12:00:00"
         drone = "512"
-        hive = "16"
+        location = "16"
         is_delivery = true
 
-        id = Buffer.Redixcontrol.add_arrival(time, drone, hive, is_delivery)
+        id = Buffer.Redixcontrol.add_arrival(time, drone, location, is_delivery)
         resp = Buffer.Redixcontrol.query ["HGET", "arr_#{id}", "drone"]
         assert resp == drone
         Buffer.Redixcontrol.remove_arrival("arr_#{id}")
@@ -37,10 +37,10 @@ defmodule RedixcontrolTest do
     test "Adding and removing departures" do
         time = "2017-01-01 12:00:00"
         drone = "512"
-        hive = "16"
+        location = "16"
         is_delivery = true
 
-        id = Buffer.Redixcontrol.add_departure(time, drone, hive, is_delivery)
+        id = Buffer.Redixcontrol.add_departure(time, drone, location, is_delivery)
         resp = Buffer.Redixcontrol.query ["HGET", "dep_#{id}", "drone"]
         assert resp == drone
         Buffer.Redixcontrol.remove_departure("dep_#{id}")
