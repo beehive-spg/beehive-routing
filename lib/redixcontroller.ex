@@ -85,15 +85,15 @@ defmodule Buffer.Redixcontrol do
     end
 
     # TODO maybe merge the two methods for each type is entry to make it more DRY
-    def add_arrival(time, drone, hive, is_delivery) do
-        Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
+    def add_arrival(time, drone, location, is_delivery) do
+        Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
         id = get_next_id("arr")
         # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
 
         commands = [["MULTI"]]
         commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "drone", "#{drone}"]]
-        commands = commands ++ [["HSET", "arr_#{id}", "hive", "#{hive}"]]
+        commands = commands ++ [["HSET", "arr_#{id}", "location", "#{location}"]]
         commands = commands ++ [["HSET", "arr_#{id}", "is_delivery", "#{is_delivery}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
@@ -103,14 +103,14 @@ defmodule Buffer.Redixcontrol do
         id
     end
 
-    def add_departure(time, drone, hive, is_delivery) do
-        Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, hive: #{hive}, is_delivery: #{is_delivery}"
+    def add_departure(time, drone, location, is_delivery) do
+        Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
         id = get_next_id("dep")
 
         commands = [["MULTI"]]
         commands = commands ++ [["HSET", "dep_#{id}", "time", "#{time}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "drone", "#{drone}"]]
-        commands = commands ++ [["HSET", "dep_#{id}", "hive", "#{hive}"]]
+        commands = commands ++ [["HSET", "dep_#{id}", "location", "#{location}"]]
         commands = commands ++ [["HSET", "dep_#{id}", "is_delivery", "#{is_delivery}"]]
         commands = commands ++ [["EXEC"]]
         pipe commands
