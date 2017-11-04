@@ -21,3 +21,9 @@ erl_crash.dump
 
 # MacOS
 .DS_Store
+
+# Release folder with uselesse deps
+/rel/
+
+# Development
+notes.md
