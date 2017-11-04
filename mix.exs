@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger, :amqp]
     ]
   end
 
@@ -23,7 +23,10 @@ defmodule Routing.Mixfile do
     [
       {:conform, "~> 2.5", override: true},
       {:exrm, "~> 1.0", override: true},
-      {:conform_exrm, "~> 1.0"}
+      {:conform_exrm, "~> 1.0"},
+
+      # RabbitMQ / CloudAMQP
+      {:amqp, "~> 1.0.0-pre.2"}
     ]
   end
 end
