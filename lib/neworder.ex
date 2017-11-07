@@ -3,28 +3,37 @@ defmodule Routing.Neworder do
   use AMQP
   require Logger
 
-  def start_link(opts) do
+  def start_link(_opts) do
     GenServer.start(__MODULE__, [], [])
+  end
+
+  def init(_args) do
+    connect_rabbitmq
   end
 
   @exchange "amq.direct"
   @queue    "new_orders"
   @error    "#{@queue}_error"
 
-  def init(args) do
-    Logger.info Application.get_env :routing, :cloudamqp_url
-    {:ok, conn} = Connection.open "#{Application.get_env(:routing, :cloudamqp_url)}"
-    {:ok, chan} = Channel.open conn
-    setup_queue chan
+  def connect_rabbitmq do
+    case Connection.open "#{Application.get_env(:routing, :cloudamqp_url)}" do
+      {:ok, conn} ->
+        Process.monitor conn.pid
+        {:ok, chan} = Channel.open conn
+        setup_queue chan
+        Basic.qos chan, prefetch_count: 100
+        {:ok, _consumer_tag} = Basic.consume chan, @queue
+        {:ok, chan}
 
-    Basic.qos chan, prefetch_count: 100
-    {:ok, _consumer_tag} = Basic.consume chan, @queue
-    {:ok, chan}
+      {:eror, _} ->
+        :timer.sleep 1000
+        connect_rabbitmq
+    end
   end
 
   def setup_queue(chan) do
     Queue.declare chan, @error, durable: true
-    Queue.declare chan, @queue, durable: true
+    Queue.declare chan, @queue, durable: true, arguments: [{"x-dead-letter-exchange", :longstr, @exchange}, {"x-dead-letter-routing-key", :longstr, @error}]
     Exchange.direct chan, @exchange, durable: true # Declaring the exchange
     Queue.bind chan, @queue, @exchange # Binding the two above
   end
@@ -43,14 +52,23 @@ defmodule Routing.Neworder do
 
   # Handling received message
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, chan) do
-    Logger.info "Handling incoming message"
-    spawn fn -> process_message chan, tag, redelivered, payload end
+    Logger.debug "Handling incoming message"
+    {:ok, order} = process_message chan, tag, redelivered, payload
+    if is_map order do Logger.info "Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}" end
     {:noreply, chan}
   end
 
-  def process_message(chan, tag, redelivered, payload) do
+  defp process_message(chan, tag, redelivered, payload) do
     Basic.ack chan, tag
-    IO.puts "Received: Tag: #{tag}, Redelivered: #{redelivered}, Payload: #{payload}"
+    order = Poison.decode! ~s(#{payload})
+    {:ok, order}
+  rescue
+    Protocol.UndefinedError ->
+      Logger.warn "New Orders: Could not process message: #{payload}"
+    Poison.SyntaxError ->
+      Logger.warn "New Orders: Could not process message: #{payload}"
+      # TODO implement replying to message that something went wrong
+    {:ok, "Requeued due to error during processing."}
   end
 
 end

@@ -27,7 +27,10 @@ defmodule Routing.Mixfile do
       {:conform_exrm, "~> 1.0"},
 
       # RabbitMQ / CloudAMQP
-      {:amqp, "~> 1.0.0-pre.2"}
+      {:amqp, "~> 1.0.0-pre.2"},
+
+      # JSON
+      {:poison, "~> 3.1"}
     ]
   end
 end
