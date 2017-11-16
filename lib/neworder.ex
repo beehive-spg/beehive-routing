@@ -54,7 +54,10 @@ defmodule Routing.Neworder do
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, chan) do
     Logger.debug "Handling incoming message"
     {:ok, order} = process_message chan, tag, redelivered, payload
-    if is_map order do Logger.info "Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}" end
+    if is_map order do
+      Logger.info "Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}"
+      # TODO call routing engine with order
+    end
     {:noreply, chan}
   end
 
