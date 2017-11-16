@@ -84,6 +84,19 @@ defmodule Buffer.Redixcontrol do
         link_hops(tail)
     end
 
+    # [%{:departure => "dep_124", :arrival => "dep_256", :hop_id => "64"}, ...]
+    # TODO What is stored in the database? Key or ID? Currently acting like key
+    def link_hops_db_id([head | []]) do
+        query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
+        query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
+    end
+
+    def link_hops_db_id([head | tail]) do
+        query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
+        query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
+        link_hops_db_id tail
+    end
+
     # TODO maybe merge the two methods for each type is entry to make it more DRY
     def add_arrival(time, drone, location, is_delivery) do
         Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
