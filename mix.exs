@@ -23,7 +23,10 @@ defmodule Routing.Mixfile do
     [
       {:conform, "~> 2.5", override: true},
       {:exrm, "~> 1.0", override: true},
-      {:conform_exrm, "~> 1.0"}
+      {:conform_exrm, "~> 1.0"},
+
+      # Graph Management
+      {:libgraph, "~> 0.11.1"}
     ]
   end
 end
