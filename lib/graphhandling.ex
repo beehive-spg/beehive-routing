@@ -1,15 +1,23 @@
 defmodule Routing.Graphhandling do
   use GenServer
-  #use Graph
 
-  @link "http://linktorestapi.com"
+  #@link "http://linktorestapi.com"
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, Graph.new(type: :undirected))
   end
 
-  def get_graph do
-    update
+  def get_graph_for(server, %{:from => from, :to => to} = destinations) when is_atom(from) and is_atom(to) do
+    GenServer.call(server, {:get_for, destinations})
+  end
+
+  def handle_call({:get_for, destination}, _from, state) do
+    {:ok, state} = update
+    # TODO fetch from db
+    graph = Graph.add_vertices(state, [:shop, :cust])
+            |> Graph.add_edges([{:shop, :dp2, [label: 5]}, {:shop, :dp10, [label: 5]}])
+            |> Graph.add_edges([{:cust, :dp7, [label: 5]}])
+    {:reply, graph, state}
   end
 
   defp update do

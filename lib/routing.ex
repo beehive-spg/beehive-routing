@@ -6,7 +6,8 @@ defmodule Routing do
     Logger.info "Application started..."
 
     children = [
-      Routing.Neworder.child_spec []
+      #Routing.Neworder.child_spec []
+      #Routing.Graphhandling.child_spec([])
     ]
 
     opts = [strategy: :one_for_one, name: Routing]
