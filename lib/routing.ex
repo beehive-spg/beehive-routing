@@ -8,6 +8,8 @@ defmodule Routing do
     children = [
       #Routing.Neworder.child_spec []
       #Routing.Graphhandling.child_spec([])
+      Routing.Neworder.child_spec([]),
+      #Routing.Dataupdated.child_spec([])
     ]
 
     opts = [strategy: :one_for_one, name: Routing]

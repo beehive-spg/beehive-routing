@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :amqp],
       mod: {Routing, []}
     ]
   end
@@ -30,7 +30,13 @@ defmodule Routing.Mixfile do
       # {:libgraph, "~> 0.11.1"}
       #{:libgraph, git: "git@github.com:Langhaarzombie/libgraph.git"}
       #{:libgraph, git: "https://github.com/Langhaarzombie/libgraph.git", branch: "develop"}
-      {:graph, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"}
+      {:graph, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"},
+
+      # RabbitMQ / CloudAMQP
+      {:amqp, "~> 1.0.0-pre.2"},
+
+      # JSON
+      {:poison, "~> 3.1"}
     ]
   end
 end
