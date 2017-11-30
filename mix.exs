@@ -14,7 +14,8 @@ defmodule Routing.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Routing, []}
     ]
   end
 
@@ -23,7 +24,13 @@ defmodule Routing.Mixfile do
     [
       {:conform, "~> 2.5", override: true},
       {:exrm, "~> 1.0", override: true},
-      {:conform_exrm, "~> 1.0"}
+      {:conform_exrm, "~> 1.0"},
+
+      # Graph Management
+      # {:libgraph, "~> 0.11.1"}
+      #{:libgraph, git: "git@github.com:Langhaarzombie/libgraph.git"}
+      #{:libgraph, git: "https://github.com/Langhaarzombie/libgraph.git", branch: "develop"}
+      {:graph, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"}
     ]
   end
 end
