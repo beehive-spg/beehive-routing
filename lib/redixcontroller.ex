@@ -14,7 +14,7 @@ defmodule Buffer.Redixcontrol do
     host = Application.fetch_env!(:redix, :host)
     port = Application.fetch_env!(:redix, :port)
 
-    Logger.debug "Creating Redix pool: poolsize: #{poolsize}, url: #{host}, port: #{port}"
+    Logger.debug("Creating Redix pool: poolsize: #{poolsize}, url: #{host}, port: #{port}")
 
     pool = for i <- 0..(poolsize-1) do
       args = [[host: host, port: port], [name: :"redix_#{i}"]]
@@ -72,29 +72,29 @@ defmodule Buffer.Redixcontrol do
 
   defp link_hops([head | []]) do
     command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
-    query command
+    query(command)
   end
   defp link_hops([head | tail]) do
     command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
-    query command
+    query(command)
     link_hops(tail)
   end
 
   # [%{:departure => "dep_124", :arrival => "dep_256", :hop_id => "64"}, ...]
   # TODO What is stored in the database? Key or ID? Currently acting like key
   def link_hops_db_id([head | []]) do
-    query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
-    query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
+    query(["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"])
+    query(["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"])
   end
   def link_hops_db_id([head | tail]) do
-    query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
-    query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
-    link_hops_db_id tail
+    query(["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"])
+    query(["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"])
+    link_hops_db_id(tail)
   end
 
   # TODO maybe merge the two methods for each type is entry to make it more DRY
   def add_arrival(time, drone, location, is_delivery) do
-    Logger.debug "Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
+    Logger.debug("Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}")
     id = get_next_id("arr")
     # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
 
@@ -104,15 +104,15 @@ defmodule Buffer.Redixcontrol do
     commands = commands ++ [["HSET", "arr_#{id}", "location", "#{location}"]]
     commands = commands ++ [["HSET", "arr_#{id}", "is_delivery", "#{is_delivery}"]]
     commands = commands ++ [["EXEC"]]
-    pipe commands
+    pipe(commands)
 
     insert_sorted("arr_#{id}")
-    Logger.debug "Arrival successfully added"
+    Logger.debug("Arrival successfully added")
     id
   end
 
   def add_departure(time, drone, location, is_delivery) do
-    Logger.debug "Adding departure for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}"
+    Logger.debug("Adding departure for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}")
     id = get_next_id("dep")
 
     commands = [["MULTI"]]
@@ -121,56 +121,55 @@ defmodule Buffer.Redixcontrol do
     commands = commands ++ [["HSET", "dep_#{id}", "location", "#{location}"]]
     commands = commands ++ [["HSET", "dep_#{id}", "is_delivery", "#{is_delivery}"]]
     commands = commands ++ [["EXEC"]]
-    pipe commands
+    pipe(commands)
 
     insert_sorted("dep_#{id}")
-    Logger.debug "Departure successfully added"
+    Logger.debug("Departure successfully added")
     id
   end
 
   def remove_arrival(key) when is_bitstring(key) do
-    Logger.debug "Deleting arrival for key: #{key}"
+    Logger.debug("Deleting arrival for key: #{key}")
 
     commands = [["MULTI"]]
     commands = commands ++ [["DEL", key]] # remove hash from db
     commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
     commands = commands ++ [["EXEC"]]
-    pipe commands
+    pipe(commands)
 
-    Logger.debug "Arrival deleted"
+    Logger.debug("Arrival deleted")
   end
 
   def remove_departure(key) when is_bitstring(key) do
-    Logger.debug "Deleting departure for key: #{key}"
+    Logger.debug("Deleting departure for key: #{key}")
 
     commands = [["MULTI"]]
     commands = commands ++ [["DEL", key]] # remove hash from db
     commands = commands ++ [["LREM", "active_jobs", "-1", key]] # set key inactive
     commands = commands ++ [["EXEC"]]
-    pipe commands
+    pipe(commands)
 
-    Logger.debug "Departure deleted"
+    Logger.debug("Departure deleted")
   end
 
   def active_jobs() do
-    query ["LRANGE", "active_jobs", "0", "-1"]
+    query(["LRANGE", "active_jobs", "0", "-1"])
   end
 
   def get_next_id(from) when is_bitstring(from) do
-    query ["INCR", "#{from}_next_id"]
+    query(["INCR", "#{from}_next_id"])
   end
 
   def get(key, worker \\ -1) do
-    query ["GET", "#{key}"], worker
+    query(["GET", "#{key}"], worker)
   end
 
   def set(key, value, worker \\ -1) do
-    query ["SET", "#{key}", "#{value}"], worker
+    query(["SET", "#{key}", "#{value}"], worker)
   end
 
   defp wait_for_not_locked() do
-    accessible = query ["SETNX", "locked", "true"]
-    IO.puts accessible
+    accessible = query(["SETNX", "locked", "true"])
     if accessible == 0 do
       :timer.sleep(10)
       wait_for_not_locked()
@@ -185,7 +184,7 @@ defmodule Buffer.Redixcontrol do
     commands = commands ++ commands_insert_array(array)
     commands = commands ++ [["DEL", "locked"]]
     commands = commands ++ [["EXEC"]]
-    pipe commands
+    pipe(commands)
   end
 
   defp commands_insert_array([head | []]) do
@@ -199,8 +198,8 @@ defmodule Buffer.Redixcontrol do
     [item]
   end
   defp sorted_array([head | tail], item) do
-    head_db = query ["HGET", "#{head}", "time"]
-    item_db = query ["HGET", "#{item}", "time"] # TODO pass this as a parameter during the recursion -> stays the same
+    head_db = query(["HGET", "#{head}", "time"])
+    item_db = query(["HGET", "#{item}", "time"]) # TODO pass this as a parameter during the recursion -> stays the same
     diff = compare_time(head_db, item_db)
     if diff > 0 do # head time is bigger than item time -> item needs to be before head
       if tail == [] do
