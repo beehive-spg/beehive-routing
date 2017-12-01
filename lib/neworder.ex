@@ -33,7 +33,8 @@ defmodule Routing.Neworder do
 
   def setup_queue(chan) do
     Queue.declare chan, @error, durable: true
-    Queue.declare chan, @queue, durable: true, arguments: [{"x-dead-letter-exchange", :longstr, @exchange}, {"x-dead-letter-routing-key", :longstr, @error}]
+    # Queue.declare chan, @queue, durable: true, arguments: [{"x-dead-letter-exchange", :longstr, @exchange}, {"x-dead-letter-routing-key", :longstr, @error}]
+    Queue.declare chan, @queue, durable: true
     Exchange.direct chan, @exchange, durable: true # Declaring the exchange
     Queue.bind chan, @queue, @exchange # Binding the two above
   end
@@ -57,6 +58,7 @@ defmodule Routing.Neworder do
     if is_map order do
       Logger.info "Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}"
       # TODO call routing engine with order
+      Routing.Routecalc.calc(order)
     end
     {:noreply, chan}
   end

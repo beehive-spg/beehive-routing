@@ -8,9 +8,16 @@ defmodule Routing.Routecalc do
   end
 
   def calc(data) do
-    graph = GenServer.call(:graphhandling, {:get_for, data})
-    ideal = Graph.shortest_path(graph, :"dp#{data["from"]}", :"dp#{data["to"]}") # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
-    ideal
+    case GenServer.whereis(:graphhandling) do
+      nil ->
+        setup
+        calc(data)
+      _ ->
+        graph = GenServer.call(:graphhandling, {:get_for, data})
+        ideal = Graph.shortest_path(graph, :"dp#{data["from"]}", :"dp#{data["to"]}")
+        # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
+        ideal
+    end
   end
 
 end
