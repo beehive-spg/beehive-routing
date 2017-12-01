@@ -7,9 +7,7 @@ defmodule Buffer.Redixcontrol do
   # when calling get/set you need the key.
   # E.g. key = arr_00, id = 00
 
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, :ok, opts)
-  end
+  def start_link(opts), do: Supervisor.start_link(__MODULE__, :ok, opts)
 
   def init(:ok) do
     poolsize = 3
@@ -66,7 +64,6 @@ defmodule Buffer.Redixcontrol do
     arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
     [[dep_id, arr_id]]
   end
-
   defp insert_hops_db([head | tail], is_delivery) do
     dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
     arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
@@ -77,7 +74,6 @@ defmodule Buffer.Redixcontrol do
     command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
     query command
   end
-
   defp link_hops([head | tail]) do
     command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
     query command
@@ -90,7 +86,6 @@ defmodule Buffer.Redixcontrol do
     query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
     query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
   end
-
   def link_hops_db_id([head | tail]) do
     query ["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"]
     query ["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"]
@@ -196,7 +191,6 @@ defmodule Buffer.Redixcontrol do
   defp commands_insert_array([head | []]) do
     [["RPUSH", "active_jobs", "#{head}"]]
   end
-
   defp commands_insert_array([head | tail]) do
     [["RPUSH", "active_jobs", "#{head}"]] ++ commands_insert_array(tail)
   end
@@ -204,7 +198,6 @@ defmodule Buffer.Redixcontrol do
   defp sorted_array([], item) do
     [item]
   end
-
   defp sorted_array([head | tail], item) do
     head_db = query ["HGET", "#{head}", "time"]
     item_db = query ["HGET", "#{item}", "time"] # TODO pass this as a parameter during the recursion -> stays the same
