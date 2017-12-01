@@ -150,5 +150,5 @@ defmodule Routing.Graphhandling do
 
     {:ok, state}
   end
-
 end
+
