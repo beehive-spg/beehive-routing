@@ -3,7 +3,7 @@ defmodule Routing.Routecalc do
 
   def setup do
     {:ok, pid} = GenServer.start_link(Routing.Graphhandling, Graph.new, name: :graphhandling)
-    Logger.info "Graphhandler started."
+    Logger.info("Graphhandler started.")
     :ok
   end
 
@@ -19,5 +19,5 @@ defmodule Routing.Routecalc do
         ideal
     end
   end
-
 end
+
