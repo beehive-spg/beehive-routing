@@ -1,18 +1,20 @@
 defmodule Buffer do
-  @moduledoc """
-  Documentation for Buffer.
-  """
+  use Application
+  require Logger
 
-  @doc """
-  Hello world.
+  def start _type, _args do
+    Logger.info("Application started...")
 
-  ## Examples
+    children = [
+      Buffer.Secretary.child_spec([]),
+      Buffer.Redixcontrol.child_spec([])
+    ]
 
-      iex> Buffer.hello
-      :world
+    opts = [strategy: :one_for_one, name: Buffer]
+    Supervisor.start_link(children, opts)
+  end
 
-  """
-  def hello do
-    :world
+  def stop _args do
+    Logger.info("Application stopped...")
   end
 end

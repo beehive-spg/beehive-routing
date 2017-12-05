@@ -55,7 +55,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "logger.level": [
       commented: false,
       datatype: :atom,
-      default: :warn,
+      default: :debug,
       doc: "Provide documentation for logger.level here.",
       hidden: false,
       to: "logger.level"
@@ -71,7 +71,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "logger.compile_time_purge_level": [
       commented: false,
       datatype: :atom,
-      default: :info,
+      default: :debug,
       doc: "Provide documentation for logger.compile_time_purge_level here.",
       hidden: false,
       to: "logger.compile_time_purge_level"
@@ -87,6 +87,62 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
       doc: "Provide documentation for logger.backends here.",
       hidden: false,
       to: "logger.backends"
+    ],
+    "redix.host": [
+      commented: false,
+      datatype: :binary,
+      default: "localhost",
+      doc: "Provide documentation for redix.host here.",
+      hidden: false,
+      to: "redix.host"
+    ],
+    "redix.port": [
+      commented: false,
+      datatype: :integer,
+      default: 6379,
+      doc: "Provide documentation for redix.port here.",
+      hidden: false,
+      to: "redix.port"
+    ],
+    "fromats.datetime": [
+      commented: false,
+      datatype: :binary,
+      default: "{ISO:Extended}",
+      doc: "Provide documentation for fromats.datetime here.",
+      hidden: false,
+      to: "fromats.datetime"
+    ],
+    "buffer.Elixir.Buffer.Secretary.overlap": [
+      commented: false,
+      datatype: :atom,
+      default: false,
+      doc: "Provide documentation for buffer.Elixir.Buffer.Secretary.overlap here.",
+      hidden: false,
+      to: "buffer.Elixir.Buffer.Secretary.overlap"
+    ],
+    "buffer.Elixir.Buffer.Secretary.timezone": [
+      commented: false,
+      datatype: :atom,
+      default: :utc,
+      doc: "Provide documentation for buffer.Elixir.Buffer.Secretary.timezone here.",
+      hidden: false,
+      to: "buffer.Elixir.Buffer.Secretary.timezone"
+    ],
+    "buffer.Elixir.Buffer.Secretary.jobs.check_for_job.schedule": [
+      commented: false,
+      datatype: {:atom, :binary},
+      default: {:extended, "*/1"},
+      doc: "Provide documentation for buffer.Elixir.Buffer.Secretary.jobs.check_for_job.schedule here.",
+      hidden: false,
+      to: "buffer.Elixir.Buffer.Secretary.jobs.check_for_job.schedule"
+    ],
+    "buffer.Elixir.Buffer.Secretary.jobs.check_for_job.task": [
+      commented: false,
+      datatype: {:atom, :atom, :binary},
+      default: {Buffer.Secretary, :check, []},
+      doc: "Provide documentation for buffer.Elixir.Buffer.Secretary.jobs.check_for_job.task here.",
+      hidden: false,
+      to: "buffer.Elixir.Buffer.Secretary.jobs.check_for_job.task"
     ]
   ],
   transforms: [],
