@@ -27,10 +27,7 @@ defmodule Routing.Mixfile do
       {:conform_exrm, "~> 1.0"},
 
       # Graph Management
-      # {:libgraph, "~> 0.11.1"}
-      #{:libgraph, git: "git@github.com:Langhaarzombie/libgraph.git"}
-      #{:libgraph, git: "https://github.com/Langhaarzombie/libgraph.git", branch: "develop"}
-      {:graph, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"},
+      {:graphbrewer, "~> 0.1.1"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
