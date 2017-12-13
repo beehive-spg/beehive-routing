@@ -5,7 +5,6 @@ defmodule Routing.Routecalc do
   def setup do
     {:ok, pid} = GenServer.start_link(Routing.Graphhandling, Graph.new, name: :graphhandling)
     Logger.info("Graphhandler started.")
-    :ok
   end
   # TODO add parameter for if delivery
   def calc(data) do
@@ -32,14 +31,18 @@ defmodule Routing.Routecalc do
     fto   = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(to), "")
     dtime = Timex.shift(Timex.now, [hours: 1, seconds: 10*t+5])
     atime = Timex.shift(Timex.now, [hours: 1, seconds: 10*(t+2)])
-    [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: "0"}]
+    [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: droneid()}]
   end
   def transform_to_buffer_map([from | [to | tail] = next], t) do
     ffrom = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(from), "")
     fto   = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(to), "")
     dtime = Timex.shift(Timex.now, [hours: 1, seconds: 10*t+5])
     atime = Timex.shift(Timex.now, [hours: 1, seconds: 10*(t+2)])
-    [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: "0"}] ++ transform_to_buffer_map(next, t+2)
+    [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: droneid()}] ++ transform_to_buffer_map(next, t+2)
+  end
+  def droneid() do
+    time = Timex.to_gregorian_microseconds(Timex.now)
+    time - round(time / 100_000_000) * 100_000_000
   end
 end
 
