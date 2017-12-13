@@ -6,12 +6,12 @@ defmodule Routing do
     Logger.info("Application started...")
 
     children = [
+      Routing.Redixcontrol.child_spec([]),
       #Routing.Neworder.child_spec []
       #Routing.Graphhandling.child_spec([])
       Routing.Neworder.child_spec([]),
       #Routing.Dataupdated.child_spec([])
-      Routing.Secretary.child_spec([]),
-      Routing.Redixcontrol.child_spec([])
+      Routing.Secretary.child_spec([])
     ]
 
     opts = [strategy: :one_for_one, name: Routing]
