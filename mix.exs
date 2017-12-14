@@ -26,7 +26,7 @@ defmodule Routing.Mixfile do
       {:conform_exrm, "~> 1.0"},
 
       # Graph Management
-      {:graphbrewer, "~> 0.1.1"},
+      {:graphbrewer, "~> 0.1.2"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
