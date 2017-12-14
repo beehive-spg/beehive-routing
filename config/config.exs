@@ -16,7 +16,6 @@ config :redix,
 config :timex,
 	datetime_format: "{ISO:Extended}"
 
-# TODO check if it is possible to set Vienna as timezone
 config :routing, Routing.Secretary,
 	overlap: false,
 	timezone: :utc,

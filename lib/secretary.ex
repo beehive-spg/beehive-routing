@@ -46,6 +46,8 @@ defmodule Routing.Secretary do
     # TODO Notify database about completed hop. Update drone status. Update package status. To be implemented.
     dbdata = mapify(Redixcontrol.query(["HGETALL", dep]))
     mapdata = Map.merge(%{type: "dep", destination: "#{Map.get(dbdata, :location)}"}, dbdata)
+    arrival = Redixcontrol.query(["HGET", Map.get(dbdata, :arrival), "location"])
+    mapdata = Map.merge(%{type: "dep", destination: arrival}, dbdata)
     json = Poison.encode!(mapdata)
     Routing.Eventcomm.publish(json)
     Redixcontrol.remove_departure(dep)

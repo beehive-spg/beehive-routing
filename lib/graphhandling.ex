@@ -8,7 +8,8 @@ defmodule Routing.Graphhandling do
   end
 
   def handle_call({:get_for, destination}, _from, state) do
-    {:ok, new} = update()
+    # {:ok, new} = update()
+    new = Testsetup.getGraph()
     # TODO fetch from db
     # TODO the locations (shop and customer) need to be added when calling this method. Disabled currently because we only test dp to dp atm
     # TODO return the current state if the database (emin) says that nothing has changes
