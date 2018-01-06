@@ -11,29 +11,35 @@ defmodule Routing.Mixfile do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :amqp],
-      mod: {Routing, []}
+      mod: {Routing, []},
+      applications: [:logger, :redix, :timex, :amqp],
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Source Management
       {:conform, "~> 2.5", override: true},
       {:exrm, "~> 1.0", override: true},
       {:conform_exrm, "~> 1.0"},
 
       # Graph Management
-      {:graphbrewer, "~> 0.1.1"},
+      {:graphbrewer, "~> 0.1.2"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
 
       # JSON
-      {:poison, "~> 3.1"}
+      {:poison, "~> 3.1"},
+
+      # Redis
+      {:redix, git: "https://github.com/whatyouhide/redix.git"},
+
+      # Job Scheduling
+      {:quantum, ">= 2.1.0"},
+      {:timex, "~> 3.1"}
     ]
   end
 end

@@ -52,13 +52,6 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
   extends: [],
   import: [],
   mappings: [
-    "routing.cloudamqp_url": [
-      commented: false,
-      datatype: :atom,
-      doc: "Provide documentation for routing.cloudamqp_url here.",
-      hidden: false,
-      to: "routing.cloudamqp_url"
-    ],
     "logger.level": [
       commented: false,
       datatype: :atom,
@@ -94,6 +87,70 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
       doc: "Provide documentation for logger.backends here.",
       hidden: false,
       to: "logger.backends"
+    ],
+    "redix.host": [
+      commented: false,
+      datatype: :binary,
+      default: "localhost",
+      doc: "Provide documentation for redix.host here.",
+      hidden: false,
+      to: "redix.host"
+    ],
+    "redix.port": [
+      commented: false,
+      datatype: :integer,
+      default: 6379,
+      doc: "Provide documentation for redix.port here.",
+      hidden: false,
+      to: "redix.port"
+    ],
+    "timex.datetime_format": [
+      commented: false,
+      datatype: :binary,
+      default: "{ISO:Extended}",
+      doc: "Provide documentation for timex.datetime_format here.",
+      hidden: false,
+      to: "timex.datetime_format"
+    ],
+    "routing.cloudamqp_url": [
+      commented: false,
+      datatype: :binary,
+      default: "amqp://krsredqt:NzLU2GCvnhhpzIRbkqPr4efn1WJmEUsk@gopher.rmq.cloudamqp.com/krsredqt",
+      doc: "Provide documentation for routing.cloudamqp_url here.",
+      hidden: false,
+      to: "routing.cloudamqp_url"
+    ],
+    "routing.Elixir.Routing.Secretary.overlap": [
+      commented: false,
+      datatype: :atom,
+      default: false,
+      doc: "Provide documentation for routing.Elixir.Routing.Secretary.overlap here.",
+      hidden: false,
+      to: "routing.Elixir.Routing.Secretary.overlap"
+    ],
+    "routing.Elixir.Routing.Secretary.timezone": [
+      commented: false,
+      datatype: :atom,
+      default: :utc,
+      doc: "Provide documentation for routing.Elixir.Routing.Secretary.timezone here.",
+      hidden: false,
+      to: "routing.Elixir.Routing.Secretary.timezone"
+    ],
+    "routing.Elixir.Routing.Secretary.jobs.check_for_job.schedule": [
+      commented: false,
+      datatype: {:atom, :binary},
+      default: {:extended, "*/1"},
+      doc: "Provide documentation for routing.Elixir.Routing.Secretary.jobs.check_for_job.schedule here.",
+      hidden: false,
+      to: "routing.Elixir.Routing.Secretary.jobs.check_for_job.schedule"
+    ],
+    "routing.Elixir.Routing.Secretary.jobs.check_for_job.task": [
+      commented: false,
+      datatype: {:atom, :atom, :binary},
+      default: {Routing.Secretary, :check, []},
+      doc: "Provide documentation for routing.Elixir.Routing.Secretary.jobs.check_for_job.task here.",
+      hidden: false,
+      to: "routing.Elixir.Routing.Secretary.jobs.check_for_job.task"
     ]
   ],
   transforms: [],
