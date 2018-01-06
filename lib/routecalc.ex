@@ -27,12 +27,14 @@ defmodule Routing.Routecalc do
   # NOTE this method excludes atoms that have no numbers
   # TODO number is currently just a help to identify how many 10sec to shift the time for the next event
   def build_buffer_data(graph, route) do
-    %{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 10]))}
+    %{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 1]))}
+    #%{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 3]))}
   end
   defp transform_to_buffer_map(g, [from | [to | []]], t) do
     ffrom = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(from), "")
     fto   = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(to), "")
-    dtime = Timex.shift(t, [seconds: 5])
+    dtime = Timex.shift(t, [seconds: 0])
+    #dtime = Timex.shift(t, [seconds: 3])
     {seconds, mill} = get_duration(g, from, to)
     atime = Timex.shift(dtime, [seconds: seconds, milliseconds: mill])
     [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: droneid()}]
@@ -40,7 +42,8 @@ defmodule Routing.Routecalc do
   defp transform_to_buffer_map(g, [from | [to | tail] = next], t) do
     ffrom = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(from), "")
     fto   = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(to), "")
-    dtime = Timex.shift(t, [seconds: 5])
+    dtime = Timex.shift(t, [seconds: 0])
+    #dtime = Timex.shift(t, [seconds: 3])
     {seconds, mill} = get_duration(g, from, to)
     atime = Timex.shift(dtime, [seconds: seconds, milliseconds: mill])
     [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: droneid()}] ++ transform_to_buffer_map(g, next, atime)
