@@ -10,8 +10,9 @@ config :logger,
 	backends: [:console]
 
 config :redix,
-	host: "localhost",
-	port: 6379 # default
+    host: "pub-redis-13146.eu-central-1-1.1.ec2.redislabs.com",
+	port: 13146,
+    password: System.get_env("REDIS_PWD") # TODO implement confex
 
 config :timex,
 	datetime_format: "{ISO:Extended}"

@@ -13,11 +13,12 @@ defmodule Routing.Redixcontrol do
     poolsize = 3
     host = Application.fetch_env!(:redix, :host)
     port = Application.fetch_env!(:redix, :port)
+    pwd  = Application.fetch_env!(:redix, :password)
 
-    Logger.debug("Creating Redix pool: poolsize: #{poolsize}, url: #{host}, port: #{port}")
+    Logger.debug("Creating Redix pool: poolsize: #{poolsize}, url: #{host}, port: #{port}, password: #{pwd}")
 
     pool = for i <- 0..(poolsize-1) do
-      args = [[host: host, port: port], [name: :"redix_#{i}"]]
+      args = [[host: host, port: port, password: pwd], [name: :"redix_#{i}"]]
       Supervisor.child_spec({Redix, args}, id: {Redix, i})
     end
 
