@@ -52,17 +52,17 @@ defmodule Routing.Neworder do
   # Handling received message
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, chan) do
     Logger.debug("Handling incoming message")
+    Basic.ack(chan, tag)
     {:ok, order} = process_message(chan, tag, redelivered, payload)
     if is_map order do
       Logger.info("Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}")
       # TODO call routing engine with order
-      Routecalc.calc(order)
+      Task.start(fn -> Routecalc.calc(order) end)
     end
     {:noreply, chan}
   end
 
   defp process_message(chan, tag, redelivered, payload) do
-    Basic.ack(chan, tag)
     order = Poison.decode!(~s(#{payload}))
     {:ok, order}
   rescue
