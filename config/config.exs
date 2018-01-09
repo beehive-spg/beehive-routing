@@ -6,13 +6,16 @@ config :routing,
 config :logger,
 	level: :debug, #for runtime
 	truncate: 4096,
-	compile_time_purge_level: :debug, #for compile time
+	compile_time_purge_level: :info, #for compile time
 	backends: [:console]
 
 config :redix,
-    host: System.get_env("REDIS_URL"),
-    port: 13146,
-    password: System.get_env("REDIS_PWD") # TODO implement confex
+    # host: System.get_env("REDIS_URL"),
+    # port: 13146,
+    # password: System.get_env("REDIS_PWD") # TODO implement confex
+    # host: "localhost",
+    host: "redis",
+    port: 6379
 
 config :timex,
 	datetime_format: "{ISO:Extended}"

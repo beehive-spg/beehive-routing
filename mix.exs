@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   def application do
     [
       mod: {Routing, []},
-      applications: [:logger, :redix, :timex, :amqp],
+      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :conform_exrm, :quantum],
     ]
   end
 

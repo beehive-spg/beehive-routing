@@ -9,17 +9,9 @@ defmodule Routing.Secretary do
 
   def check do
     Logger.debug "Time checking ..."
-    jobs = []
-    jobs = Redixcontrol.active_jobs
-    if jobs != [] do
-      [next | _] = jobs
-      Logger.debug "Next job: #{next}"
-      time_str = Redixcontrol.query ["HGET", next, "time"]
-      time_form = Timex.parse!(time_str, Application.fetch_env!(:timex, :datetime_format))
-
-     if Timex.diff(Timex.shift(Timex.now, hours: 1), time_form, :seconds) >= 0 do
-        execute_job(next)
-      end
+    job = Redixcontrol.get_next_job()
+    if job != nil do
+      execute_job(job)
     end
   end
 
