@@ -13,7 +13,8 @@ config :redix,
     # host: System.get_env("REDIS_URL"),
     # port: 13146,
     # password: System.get_env("REDIS_PWD") # TODO implement confex
-    host: "localhost",
+    # host: "localhost",
+    host: "redis",
     port: 6379
 
 config :timex,

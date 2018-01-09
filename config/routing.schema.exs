@@ -71,7 +71,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "logger.compile_time_purge_level": [
       commented: false,
       datatype: :atom,
-      default: :debug,
+      default: :info,
       doc: "Provide documentation for logger.compile_time_purge_level here.",
       hidden: false,
       to: "logger.compile_time_purge_level"
@@ -91,7 +91,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "redix.host": [
       commented: false,
       datatype: :binary,
-      default: "localhost",
+      default: "redis",
       doc: "Provide documentation for redix.host here.",
       hidden: false,
       to: "redix.host"
@@ -115,7 +115,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "routing.cloudamqp_url": [
       commented: false,
       datatype: :binary,
-      default: "amqp://krsredqt:NzLU2GCvnhhpzIRbkqPr4efn1WJmEUsk@gopher.rmq.cloudamqp.com/krsredqt",
+      default: "amqp://nldowwmg:z9o08tVtONKfD_5LSUGoCikbixo1Yu27@impala.rmq.cloudamqp.com/nldowwmg",
       doc: "Provide documentation for routing.cloudamqp_url here.",
       hidden: false,
       to: "routing.cloudamqp_url"
