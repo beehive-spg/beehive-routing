@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   def application do
     [
       mod: {Routing, []},
-      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :conform_exrm, :quantum],
+      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum],
     ]
   end
 
@@ -22,8 +22,7 @@ defmodule Routing.Mixfile do
     [
       # Source Management
       {:conform, "~> 2.5", override: true},
-      {:exrm, "~> 1.0", override: true},
-      {:conform_exrm, "~> 1.0"},
+      {:distillery, "~> 1.5", runtime: false},
 
       # Graph Management
       {:graphbrewer, "~> 0.1.2"},

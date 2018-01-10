@@ -14,7 +14,9 @@ defmodule Routing.Neworder do
   @error    "#{@queue}_error"
 
   def connect_rabbitmq do
-    case Connection.open("#{Application.get_env(:routing, :cloudamqp_url)}") do
+    # TODO workaround because when building an executable elixir cannot find the env variable - idk why
+    case Connection.open("#{System.get_env("CLOUDAMQP_URL")}") do
+    # case Connection.open("#{Application.fetch_env!(:routing, :cloudamqp_url)}") do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
@@ -31,7 +33,6 @@ defmodule Routing.Neworder do
 
   def setup_queue(chan) do
     Queue.declare(chan, @error, durable: true)
-    # Queue.declare(chan, @queue, durable: true, arguments: [{"x-dead-letter-exchange", :longstr, @exchange}, {"x-dead-letter-routing-key", :longstr, @error}])
     Queue.declare(chan, @queue, durable: true)
     Exchange.direct(chan, @exchange, durable: true) # Declaring the exchange
     Queue.bind(chan, @queue, @exchange) # Binding the two above
