@@ -2,13 +2,16 @@ defmodule Routing.Routecalc do
   require Logger
   use Timex
 
+  alias Routing.Graphrepo
+  alias Routing.Redixcontrol
+
   def setup do
-    {:ok, pid} = GenServer.start_link(Routing.Graphhandling, Graph.new, name: :graphhandling)
+    {:ok, pid} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
     Logger.info("Graphhandler started.")
   end
   # TODO add parameter for if delivery
   def calc(data) do
-    case GenServer.whereis(:graphhandling) do
+    case GenServer.whereis(:graphrepo) do
       nil ->
         setup
         calc(data)
@@ -22,7 +25,7 @@ defmodule Routing.Routecalc do
     end
   end
   def notify_buffer(info) do
-    Routing.Redixcontrol.add_route(info)
+    Redixcontrol.add_route(info)
   end
   # NOTE this method excludes atoms that have no numbers
   # TODO number is currently just a help to identify how many 10sec to shift the time for the next event

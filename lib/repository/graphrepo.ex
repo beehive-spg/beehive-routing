@@ -1,4 +1,4 @@
-defmodule Routing.Graphhandling do
+defmodule Routing.Graphrepo do
   use GenServer
 
   #@link "http://linktorestapi.com"
