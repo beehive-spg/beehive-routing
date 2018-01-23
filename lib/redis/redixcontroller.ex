@@ -98,7 +98,6 @@ defmodule Routing.Redixcontrol do
   def add_arrival(time, drone, location, is_delivery) do
     Logger.debug("Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}")
     id = get_next_id("arr")
-    # TODO add proper debug info for list of active arr ids and the added object (same for departure and removal)
 
     commands = [["MULTI"]]
     commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
@@ -176,10 +175,10 @@ defmodule Routing.Redixcontrol do
   end
   defp next([h | t]) do
     item_time = Timex.parse!(query(["HGET", h, "time"]), Application.fetch_env!(:timex, :datetime_format))
-    if Timex.diff(Timex.shift(Timex.now, hours: 1), item_time, :seconds) < 0 do
-      result = next(t)
+    result = if Timex.diff(Timex.shift(Timex.now, hours: 1), item_time, :seconds) < 0 do
+      next(t)
     else
-      result = h
+      h
     end
     result
   end

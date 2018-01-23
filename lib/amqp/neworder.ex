@@ -3,7 +3,7 @@ defmodule Routing.Neworder do
   use AMQP
   require Logger
 
-  alias Routing.Routecalc
+  alias Routing.Routehandler
 
   def start_link(_opts), do: GenServer.start(__MODULE__, [], [])
 
@@ -14,7 +14,6 @@ defmodule Routing.Neworder do
   @error    "#{@queue}_error"
 
   def connect_rabbitmq do
-    # TODO workaround because when building an executable elixir cannot find the env variable - idk why
     case Connection.open("#{System.get_env("CLOUDAMQP_URL")}") do
     # case Connection.open("#{Application.fetch_env!(:routing, :cloudamqp_url)}") do
       {:ok, conn} ->
@@ -51,28 +50,16 @@ defmodule Routing.Neworder do
   end
 
   # Handling received message
-  def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, chan) do
+  def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message")
     Basic.ack(chan, tag)
-    {:ok, order} = process_message(chan, tag, redelivered, payload)
-    if is_map order do
-      Logger.info("Order for: ID: #{order["id"]}: #{order["from"]}, #{order["to"]}")
-      # TODO call routing engine with order
-      Task.start(fn -> Routecalc.calc(order) end)
+    case Routehandler.calc_delivery(payload) do
+      {:err, message} ->
+        Logger.warn(message)
+      {:ok, message} ->
+        Logger.debug(message)
     end
     {:noreply, chan}
-  end
-
-  defp process_message(chan, tag, redelivered, payload) do
-    order = Poison.decode!(~s(#{payload}))
-    {:ok, order}
-  rescue
-    Protocol.UndefinedError ->
-      Logger.warn("New Orders: Could not process message: #{payload}")
-    Poison.SyntaxError ->
-      Logger.warn("New Orders: Could not process message: #{payload}")
-      # TODO implement replying to message that something went wrong
-    {:ok, "Requeued due to error during processing."}
   end
 end
 
