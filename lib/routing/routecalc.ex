@@ -9,17 +9,17 @@ defmodule Routing.Routecalc do
     {:ok, pid} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
     Logger.info("Graphhandler started.")
   end
-  # TODO add parameter for if delivery
-  def calc(data) do
+
+  def calc(data, delivery) do
     case GenServer.whereis(:graphrepo) do
       nil ->
-        setup
-        calc(data)
+        setup()
+        calc(data, delivery)
       _ ->
-        graph = GenServer.call(:graphhandling, {:get_for, data})
+        graph = GenServer.call(:graphrepo, {:get_for, data})
         ideal = Graph.shortest_path(graph, :"dp#{data["from"]}", :"dp#{data["to"]}")
         # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
-        data = build_buffer_data(graph, ideal)
+        data = build_buffer_data(graph, ideal, delivery)
         notify_buffer(data)
         ideal
     end
@@ -29,8 +29,8 @@ defmodule Routing.Routecalc do
   end
   # NOTE this method excludes atoms that have no numbers
   # TODO number is currently just a help to identify how many 10sec to shift the time for the next event
-  def build_buffer_data(graph, route) do
-    %{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 1]))}
+  def build_buffer_data(graph, route, delivery) do
+    %{is_delivery: delivery, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 1]))}
     #%{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 3]))}
   end
   defp transform_to_buffer_map(g, [from | [to | []]], t) do
