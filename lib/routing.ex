@@ -7,10 +7,7 @@ defmodule Routing do
 
     children = [
       Routing.Redixcontrol.child_spec([]),
-      #Routing.Neworder.child_spec []
-      #Routing.Graphhandling.child_spec([])
       Routing.Neworder.child_spec([]),
-      #Routing.Dataupdated.child_spec([])
       Routing.Secretary.child_spec([])
     ]
 

@@ -6,7 +6,7 @@ defmodule Routing.Routecalc do
   alias Routing.Redixcontrol
 
   def setup do
-    {:ok, pid} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
+    {:ok, _} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
     Logger.info("Graphhandler started.")
   end
 
@@ -27,8 +27,8 @@ defmodule Routing.Routecalc do
   def notify_buffer(info) do
     Redixcontrol.add_route(info)
   end
+
   # NOTE this method excludes atoms that have no numbers
-  # TODO number is currently just a help to identify how many 10sec to shift the time for the next event
   def build_buffer_data(graph, route, delivery) do
     %{is_delivery: delivery, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 1]))}
     #%{is_delivery: false, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 3]))}
@@ -42,7 +42,7 @@ defmodule Routing.Routecalc do
     atime = Timex.shift(dtime, [seconds: seconds, milliseconds: mill])
     [%{from: ffrom, to: fto, dep_time: "#{dtime}", arr_time: "#{atime}", drone: droneid()}]
   end
-  defp transform_to_buffer_map(g, [from | [to | tail] = next], t) do
+  defp transform_to_buffer_map(g, [from | [to | _] = next], t) do
     ffrom = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(from), "")
     fto   = Regex.replace(~r/[A-Za-z]*/, Atom.to_string(to), "")
     dtime = Timex.shift(t, [seconds: 0])
