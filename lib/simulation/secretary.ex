@@ -9,9 +9,13 @@ defmodule Routing.Secretary do
 
   def check do
     Logger.debug "Time checking ..."
-    job = Redixcontrol.get_next_job()
-    if job != nil do
-      execute_job(job)
+    jobs = Redixcontrol.get_next_job()
+    if jobs != [] do
+      Enum.each(jobs, fn(job) ->
+        Task.start(fn ->
+          execute_job(job)
+        end)
+      end)
     end
   end
 

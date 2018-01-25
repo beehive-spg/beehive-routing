@@ -171,14 +171,14 @@ defmodule Routing.Redixcontrol do
     next(active_jobs())
   end
   defp next([]) do
-    nil
+    []
   end
   defp next([h | t]) do
     item_time = Timex.parse!(query(["HGET", h, "time"]), Application.fetch_env!(:timex, :datetime_format))
     result = if Timex.diff(Timex.shift(Timex.now, hours: 1), item_time, :seconds) < 0 do
       next(t)
     else
-      h
+      [h] ++ next(t)
     end
     result
   end
