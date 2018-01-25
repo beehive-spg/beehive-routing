@@ -6,6 +6,13 @@ services:
     ports:
     - "6379:6379"
 
+  rabbitmq:
+    image: rabbitmq:3.7.2-management
+    hostname: beehive-rabbit
+    ports:
+    - "15672:15672"
+    - "5672:5672"
+
   routing:
     stdin_open: true
     tty: true
@@ -15,5 +22,6 @@ services:
     env_file:
     - .env
     depends_on:
+    - rabbitmq
     - redis
 

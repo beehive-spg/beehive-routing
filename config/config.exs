@@ -1,7 +1,8 @@
 use Mix.Config
 
 config :routing,
-  cloudamqp_url: System.get_env("CLOUDAMQP_URL")
+  # cloudamqp_url: System.get_env("CLOUDAMQP_URL")
+  cloudamqp_url: "amqp://guest:guest@rabbitmq:5672"
 
 config :logger,
 	level: :debug, #for runtime
