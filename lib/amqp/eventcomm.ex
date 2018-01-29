@@ -12,9 +12,7 @@ defmodule Routing.Eventcomm do
   @error    "#{@queue}_error"
 
   def connect_rabbitmq do
-    # TODO see neworders for details about this workaround
-    # case Connection.open("#{Application.get_env(:routing, :cloudamqp_url)}") do
-    case Connection.open("#{System.get_env("CLOUDAMQP_URL")}") do
+    case Connection.open("#{Application.get_env(:routing, :cloudamqp_url)}") do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
@@ -22,7 +20,8 @@ defmodule Routing.Eventcomm do
         Basic.qos(chan, prefetch_count: 100)
         {:ok, chan}
 
-      {:eror, _} ->
+      {status, message} ->
+        Logger.warn("Unknwon connection state: #{status}, #{message}")
         :timer.sleep(1000)
         connect_rabbitmq()
     end

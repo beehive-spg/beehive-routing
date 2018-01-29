@@ -4,22 +4,20 @@
 
 FROM bitwalker/alpine-elixir:1.5 as build
 
-# Setup the environment variables
-COPY .env .
-RUN source .env && \
-        echo $CLOUDAMQP_URL
-
 # Import project
-COPY config ./config
-COPY lib ./lib
 COPY mix.exs .
 COPY mix.lock .
 
-# Build project and create executable
-RUN export MIX_ENV=prod && \
-    mix deps.get && \
+# Install deps
+RUN mix deps.get && \
     mix local.hex --force && \
-    mix local.rebar --force && \
+    mix local.rebar --force
+
+# Build and export executable
+COPY config ./config
+COPY lib ./lib
+
+RUN export MIX_ENV=prod && \
     mix release.init && \
     mix release
 
