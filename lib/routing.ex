@@ -1,18 +1,22 @@
 defmodule Routing do
-  @moduledoc """
-  Documentation for Routing.
-  """
+  use Application
+  require Logger
 
-  @doc """
-  Hello world.
+  def start(_type, _args) do
+    Logger.info("Application started...")
 
-  ## Examples
+    children = [
+      Routing.Redixcontrol.child_spec([]),
+      Routing.Neworder.child_spec([]),
+      Routing.Secretary.child_spec([])
+    ]
 
-      iex> Routing.hello
-      :world
-
-  """
-  def hello do
-    :world
+    opts = [strategy: :one_for_one, name: Routing]
+    Supervisor.start_link(children, opts)
   end
+
+  def stop(_args) do
+    Logger.info("Application stopped...")
+  end
+
 end
