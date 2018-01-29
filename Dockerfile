@@ -4,10 +4,6 @@
 
 FROM bitwalker/alpine-elixir:1.5 as build
 
-# Setup the environment variables
-COPY .env .
-RUN source .env
-
 # Import project
 COPY config ./config
 COPY lib ./lib
