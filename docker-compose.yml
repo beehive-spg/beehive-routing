@@ -13,6 +13,11 @@ services:
     - "15672:15672"
     - "5672:5672"
 
+  beehive-database:
+    image: beehive-database:latest
+    ports:
+    - "4321:3000"
+
   routing:
     stdin_open: true
     tty: true
