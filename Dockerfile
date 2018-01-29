@@ -4,6 +4,11 @@
 
 FROM bitwalker/alpine-elixir:1.5 as build
 
+# Setup the environment variables
+COPY .env .
+RUN source .env && \
+        echo $CLOUDAMQP_URL
+
 # Import project
 COPY config ./config
 COPY lib ./lib

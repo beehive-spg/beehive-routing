@@ -14,7 +14,8 @@ defmodule Routing.Neworder do
   @error    "#{@queue}_error"
 
   def connect_rabbitmq do
-    case Connection.open("#{Application.fetch_env!(:routing, :cloudamqp_url)}") do
+    case Connection.open("#{System.get_env("CLOUDAMQP_URL")}") do
+    # case Connection.open("#{Application.fetch_env!(:routing, :cloudamqp_url)}") do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
@@ -23,8 +24,7 @@ defmodule Routing.Neworder do
         {:ok, _consumer_tag} = Basic.consume(chan, @queue)
         {:ok, chan}
 
-      {status, message} ->
-        Logger.warn("Unknwon connection state: #{status}, #{message}")
+      {:eror, _} ->
         :timer.sleep(1000)
         connect_rabbitmq()
     end
