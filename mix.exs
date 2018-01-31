@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   def application do
     [
       mod: {Routing, []},
-      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum],
+      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum, :httpotion, :distance],
     ]
   end
 
@@ -38,7 +38,13 @@ defmodule Routing.Mixfile do
 
       # Job Scheduling
       {:quantum, ">= 2.1.0"},
-      {:timex, "~> 3.1"}
+      {:timex, "~> 3.1"},
+
+      # HTTP requests
+      {:httpotion, "~> 3.0.2"},
+
+      # Distance Calculation
+      {:distance, "~> 0.2.1"}
     ]
   end
 end
