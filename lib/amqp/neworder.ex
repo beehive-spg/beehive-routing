@@ -49,6 +49,12 @@ defmodule Routing.Neworder do
     {:stop, :normal, chan}
   end
 
+  # Handling down notification - try to reconnect
+  def handle_info({:DOWN, _, :process, _pid, _reason}, _) do
+    {:ok, chan} = connect_rabbitmq()
+    {:noreply, chan}
+  end
+
   # Handling received message
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message")

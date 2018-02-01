@@ -34,6 +34,12 @@ defmodule Routing.Eventcomm do
     Queue.bind(chan, @queue, @exchange) # Binding the two above
   end
 
+  # Handle down notification - try to reconnect
+  def handle_info({:DOWN, _, :process, _pid, _reason}, _) do
+    {:ok, chan} = connect_rabbitmq()
+    {:noreply, chan}
+  end
+
   def publish(data) do
     case GenServer.whereis(:eventcomm) do
       nil ->
