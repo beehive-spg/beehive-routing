@@ -36,8 +36,7 @@ defmodule Routing.Graphrepo do
     end
   end
   defp get_start([], from), do: Logger.error("Start not found in fetched graph #{from}")
-  defp get_start([h | t], from) do
-    building = Enum.at(h, 0)
+  defp get_start([building | t], from) do
     case Map.get(building, "id") do
       ^from ->
         building
@@ -46,8 +45,7 @@ defmodule Routing.Graphrepo do
     end
   end
   defp get_target([], to), do: Logger.error("Destination not found in fetched graph: #{to}")
-  defp get_target([h | t], to) do
-    building = Enum.at(h, 0)
+  defp get_target([building | t], to) do
     case Map.get(building, "id") do
       ^to ->
         building
@@ -63,9 +61,8 @@ defmodule Routing.Graphrepo do
     graph
   end
   defp add_nodes([], _from, _to, graph), do: graph
-  defp add_nodes([h | t], from, to, graph) do
+  defp add_nodes([building | t], from, to, graph) do
     # TODO enable for customer and shops because they are not a hive
-    building = Enum.at(h, 0)
     heur_costs = round(Distance.GreatCircle.distance(
       {Map.get(building, "xcoord"), Map.get(building, "ycoord")},
       {Map.get(to, "xcoord"), Map.get(to, "ycoord")}
@@ -77,8 +74,7 @@ defmodule Routing.Graphrepo do
     graph
   end
   defp add_edges([], graph), do: graph
-  defp add_edges([h | t], graph) do
-    edge = Enum.at(h, 0)
+  defp add_edges([edge | t], graph) do
     from = :"dp#{Map.get(Map.get(edge, "start"), "id")}"
     to = :"dp#{Map.get(Map.get(edge, "end"), "id")}"
     costs = round(Map.get(edge, "distance"))
