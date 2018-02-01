@@ -3,6 +3,7 @@ defmodule Routing.Routecalc do
   use Timex
 
   alias Routing.Graphrepo
+  alias Routing.Routerepo
   alias Routing.Redixcontrol
 
   def setup do
@@ -19,10 +20,29 @@ defmodule Routing.Routecalc do
         graph = GenServer.call(:graphrepo, {:get_graph_for, Map.get(data, "from"), Map.get(data, "to")})
         ideal = Graph.shortest_path(graph, :"dp#{Map.get(data, "from")}", :"dp#{Map.get(data, "to")}")
         # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
-        ideal
+        # data = build_buffer_data(graph, ideal, delivery)
+        data = build_map(ideal, delivery)
+        data = Routerepo.get_real_data(data)
+        # TODO route evaluation when Emin implements post get redirect for adding posts
+        # Redixcontrol.add_route(info)
+        data
     end
   end
 
+  # Looks like this in the end:
+  # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
+  def build_map(route, delivery) do
+    start_time = Timex.shift(Timex.now, [hours: 1, seconds: 5]) # Five seconds delay for a route to be flown
+    %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
+  end
+  defp do_build_map([from | []]), do: []
+  defp do_build_map([from | [to | _] = next]) do
+    from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "")
+    to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "")
+    [%{from: from, to: to}] ++ do_build_map(next)
+  end
+
+  ####### OLD #######
   # NOTE this method excludes atoms that have no numbers
   def build_buffer_data(graph, route, delivery) do
     %{is_delivery: delivery, route: transform_to_buffer_map(graph, route, Timex.shift(Timex.now, [hours: 1, seconds: 1]))}
