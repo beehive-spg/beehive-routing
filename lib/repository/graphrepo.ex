@@ -4,10 +4,8 @@ defmodule Routing.Graphrepo do
 
   def handle_call({:get_graph_for, from, to}, _from, _state) do
     Logger.debug("Fetching graph for #{from}, #{to}")
-    {:ok, hives} = get_hives(from, to)
-    {:ok, edges} = get_edges(from, to)
-    hives = Poison.decode!(~s(#{hives}))
-    edges = Poison.decode!(~s(#{edges}))
+    hives = get_hives(from, to)
+    edges = get_edges(from, to)
     s = get_start(hives, String.to_integer(from))
     t = get_target(hives, String.to_integer(to))
     graph = transform_to_graph(hives, edges, s, t)
@@ -18,10 +16,9 @@ defmodule Routing.Graphrepo do
     case HTTPotion.get("#{Application.fetch_env!(:routing, :database_url)}/hives") do
       %{:body => b, :headers => _, :status_code => 200} ->
         Logger.debug("Fetching hives succeded with code 200")
-        {:ok, b}
+        Poison.decode!(~s/#{b}/)
       %{:body => _, :headers => _, :status_code => s} ->
-        Logger.error("Database returned a bad status code: #{s}")
-        {:err, s}
+        Logger.error("Fetching hives returned a bad status code: #{s}")
     end
   end
   defp get_edges(_shop, _cust) do
@@ -29,10 +26,9 @@ defmodule Routing.Graphrepo do
     case HTTPotion.get("#{Application.fetch_env!(:routing, :database_url)}/reachable") do
       %{:body => b, :headers => _, :status_code => 200} ->
         Logger.debug("Fetching hives succeded with code 200")
-        {:ok, b}
+        Poison.decode!(~s/#{b}/)
       %{:body => _, :headers => _, :status_code => s} ->
         Logger.error("Database returned a bad status code: #{s}")
-        {:err, s}
     end
   end
   defp get_start([], from), do: Logger.error("Start not found in fetched graph #{from}")
