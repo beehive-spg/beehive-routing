@@ -29,6 +29,7 @@ defmodule Routing.Routecalc do
     end
   end
 
+  # TODO format time to ISO:Extended for database: Timex.shift(Timex.from_unix(1517571316145, :milliseconds), [hours: 1])
   # Looks like this in the end:
   # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
   def build_map(route, delivery) do
