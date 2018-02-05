@@ -19,13 +19,8 @@ defmodule Routing.Routecalc do
         graph = GenServer.call(:graphrepo, {:get_for, data})
         ideal = Graph.shortest_path(graph, :"dp#{data["from"]}", :"dp#{data["to"]}")
         # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
-        data = build_buffer_data(graph, ideal, delivery)
-        notify_buffer(data)
         ideal
     end
-  end
-  def notify_buffer(info) do
-    Redixcontrol.add_route(info)
   end
 
   # NOTE this method excludes atoms that have no numbers
