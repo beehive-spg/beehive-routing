@@ -22,9 +22,10 @@ defmodule Routing.Routecalc do
         # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
         # data = build_buffer_data(graph, ideal, delivery)
         data = build_map(ideal, delivery)
-        data = Routerepo.get_real_data(data) # Adds start and end time to the hops
+        data = Routerepo.get_real_data(data) # Update the costs for the ideal route to the predicted costs
         # TODO route evaluation when Emin implements post get redirect for adding posts
         # Redixcontrol.add_route(info)
+        Routerepo.insert_route(data)
         data
     end
   end
