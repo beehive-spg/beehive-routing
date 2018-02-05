@@ -23,32 +23,26 @@ defmodule RedixcontrolTest do
 
     test "Adding and removing arrivals" do
         time = "2017-01-01 12:00:00"
-        drone = "512"
-        location = "16"
-        is_delivery = true
 
-        id = Routing.Redixcontrol.add_arrival(time, drone, location, is_delivery)
-        resp = Routing.Redixcontrol.query ["HGET", "arr_#{id}", "drone"]
-        assert resp == drone
+        id = Routing.Redixcontrol.add_arrival(time)
+        resp = Routing.Redixcontrol.query ["HGET", "arr_#{id}", "time"]
+        assert resp == time
         Routing.Redixcontrol.remove_arrival("arr_#{id}")
-        assert Routing.Redixcontrol.query(["HGET", "arr_#{id}", "drone"]) == nil
+        assert Routing.Redixcontrol.query(["HGET", "arr_#{id}", "time"]) == nil
     end
 
     test "Adding and removing departures" do
         time = "2017-01-01 12:00:00"
-        drone = "512"
-        location = "16"
-        is_delivery = true
 
-        id = Routing.Redixcontrol.add_departure(time, drone, location, is_delivery)
-        resp = Routing.Redixcontrol.query ["HGET", "dep_#{id}", "drone"]
-        assert resp == drone
+        id = Routing.Redixcontrol.add_departure(time)
+        resp = Routing.Redixcontrol.query ["HGET", "dep_#{id}", "time"]
+        assert resp == time
         Routing.Redixcontrol.remove_departure("dep_#{id}")
-        assert Routing.Redixcontrol.query(["HGET", "dep_#{id}", "drone"]) == nil
+        assert Routing.Redixcontrol.query(["HGET", "dep_#{id}", "time"]) == nil
     end
 
     test "Adding routes" do
-        route = %{:is_delivery => true, :route => [%{:from => "10", :to => "11", :dep_time => "2017-01-01 10:00:00", :arr_time => "2017-01-01 10:10:00", :drone => "512"}, %{:from => "11", :to => "12", :dep_time => "2017-01-01 10:20:00", :arr_time => "2017-01-01 10:35:00", :drone => "26"}]}
+        route = [%{:dep_time => "2017-01-01 10:00:00", :arr_time => "2017-01-01 10:10:00"}, %{:dep_time => "2017-01-01 10:20:00", :arr_time => "2017-01-01 10:35:00"}]
         ids = Routing.Redixcontrol.add_route(route)
         assert Routing.Redixcontrol.query(["HGET", "dep_#{Enum.at(Enum.at(ids, 0), 0)}", "arrival"]) == "arr_#{Enum.at(Enum.at(ids, 0), 1)}"
         cleanup(ids)
@@ -65,3 +59,4 @@ defmodule RedixcontrolTest do
         cleanup(tail)
     end
 end
+
