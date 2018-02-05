@@ -31,9 +31,8 @@ defmodule Routing.Redixcontrol do
       _  -> :"redix_#{worker}"
     end
 
-    Logger.debug("Executing #{command} on instance #{name}")
     {status, resp} = Redix.command(name, command)
-    Logger.debug("Command executed. Status: #{status}")
+    Logger.debug("#{command} executed on #{name}. Status: #{status}")
     resp
   end
 
@@ -48,7 +47,7 @@ defmodule Routing.Redixcontrol do
     resp
   end
 
-  # route = [%{:dep_time => "2018-01-01 00:00:00", :arr_time => "2018-01-01 00:05:00"}]
+  # route = [%{:dep_time => "2018-01-01 00:00:00", :arr_time => "2018-01-01 00:05:00", :hop => "1720394393", :route_id => "1723423421"}]
   def add_route(route) when is_list(route) do
     ids = insert_hops_redis(route)
     link_hops(ids)
@@ -57,8 +56,8 @@ defmodule Routing.Redixcontrol do
 
   defp insert_hops_redis([]), do: []
   defp insert_hops_redis([head | tail]) do
-    dep_id = add_departure(head[:dep_time])
-    arr_id = add_arrival(head[:arr_time])
+    dep_id = add_departure(head[:dep_time], head[:hop], head[:route_id])
+    arr_id = add_arrival(head[:arr_time], head[:hop], head[:route_id])
     [[dep_id, arr_id]] ++ insert_hops_redis(tail)
   end
 
@@ -69,21 +68,15 @@ defmodule Routing.Redixcontrol do
     link_hops(tail)
   end
 
-  # [%{:departure => "dep_124", :arrival => "dep_256", :hop_id => "64"}, ...]
-  def link_hops_db_id([]), do: Logger.debug("Linking events to database entries successfull")
-  def link_hops_db_id([head | tail]) do
-    query(["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"])
-    query(["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"])
-    link_hops_db_id(tail)
-  end
-
   # TODO maybe merge the two methods for each type is entry to make it more DRY
-  def add_arrival(time) do
-    Logger.debug("Adding arrival for drone: time: #{time}")
+  def add_arrival(time, hop, route_id) do
+    Logger.debug("Adding arrival, time: #{time}, hop_id: #{hop}, route_id: #{route_id}")
 
     id = get_next_id("arr")
     commands = [["MULTI"]]
     commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
+    commands = commands ++ [["HSET", "arr_#{id}", "hop_id", "#{hop}"]]
+    commands = commands ++ [["HSET", "arr_#{id}", "route_id", "#{route_id}"]]
     commands = commands ++ [["RPUSH", "active_jobs", "arr_#{id}"]]
     commands = commands ++ [["EXEC"]]
     pipe(commands)
@@ -92,12 +85,14 @@ defmodule Routing.Redixcontrol do
     id
   end
 
-  def add_departure(time) do
-    Logger.debug("Adding departure: time: #{time}")
+  def add_departure(time, hop, route_id) do
+    Logger.debug("Adding departure, time: #{time}, hop_id: #{hop}, route_id: #{route_id}")
 
     id = get_next_id("dep")
     commands = [["MULTI"]]
     commands = commands ++ [["HSET", "dep_#{id}", "time", "#{time}"]]
+    commands = commands ++ [["HSET", "dep_#{id}", "hop_id", "#{hop}"]]
+    commands = commands ++ [["HSET", "dep_#{id}", "route_id", "#{route_id}"]]
     commands = commands ++ [["RPUSH", "active_jobs", "dep_#{id}"]]
     commands = commands ++ [["EXEC"]]
     pipe(commands)
@@ -140,9 +135,7 @@ defmodule Routing.Redixcontrol do
     jobs
   end
 
-  def get_next_job() do
-    next(active_jobs())
-  end
+  def get_next_job, do: next(active_jobs())
   defp next([]), do: []
   defp next([h | t]) do
     item_time = Timex.parse!(query(["HGET", h, "time"]), Application.fetch_env!(:timex, :datetime_format))
@@ -160,6 +153,6 @@ defmodule Routing.Redixcontrol do
 
   def set(key, value, worker \\ -1), do: query(["SET", "#{key}", "#{value}"], worker)
 
-  defp randomize(), do: rem(System.unique_integer([:positive]), 3)
+  defp randomize, do: rem(System.unique_integer([:positive]), 3)
 end
 
