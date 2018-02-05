@@ -13,12 +13,10 @@ defmodule Routing.Redixcontrol do
     poolsize = 3
     host = Application.fetch_env!(:redix, :host)
     port = Application.fetch_env!(:redix, :port)
-    # pwd  = Application.fetch_env!(:redix, :password)
 
     Logger.debug("Creating Redix pool: poolsize: #{poolsize}, url: #{host}, port: #{port}, password: #{pwd}")
 
     pool = for i <- 0..(poolsize-1) do
-      # args = [[host: host, port: port, password: pwd], [name: :"redix_#{i}"]]
       args = [[host: host, port: port], [name: :"redix_#{i}"]]
       Supervisor.child_spec({Redix, args}, id: {Redix, i})
     end
@@ -28,7 +26,6 @@ defmodule Routing.Redixcontrol do
   end
 
   def query(command, worker \\ -1) when is_list(command) do
-
     name = case worker do
       -1 -> :"redix_#{randomize()}"
       _  -> :"redix_#{worker}"
@@ -41,41 +38,31 @@ defmodule Routing.Redixcontrol do
   end
 
   def pipe(commands, worker \\ -1) when is_list(commands) do
-
     name = case worker do
       -1 -> :"redix_#{randomize()}"
       _  -> :"redix_#{worker}"
     end
 
-    Logger.debug("Executing #{commands} on instance #{name}")
     {status, resp} = Redix.pipeline(name, commands)
-    Logger.debug("Command executed. Status: #{status}")
+    Logger.debug("#{commands} executed on #{name}. Status: #{status}")
     resp
   end
 
-  # route = %{:is_delivery => true/false, :route => [%{from => "Vienna", to => "Berlin", dep_time => "Mon", arr_time => "Tue", drone => "512"}, ...]}
-  def add_route(route) when is_map(route) do
-    delivery = route[:is_delivery]
-    ids = insert_hops_db(route[:route], delivery)
+  # route = [%{:dep_time => "2018-01-01 00:00:00", :arr_time => "2018-01-01 00:05:00"}]
+  def add_route(route) when is_list(route) do
+    ids = insert_hops_redis(route)
     link_hops(ids)
     ids
   end
 
-  defp insert_hops_db([head | []], is_delivery) do
-    dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
-    arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
-    [[dep_id, arr_id]]
-  end
-  defp insert_hops_db([head | tail], is_delivery) do
-    dep_id = add_departure(head[:dep_time], head[:drone], head[:from], is_delivery)
-    arr_id = add_arrival(head[:arr_time], head[:drone], head[:to], is_delivery)
-    [[dep_id, arr_id]] ++ insert_hops_db(tail, is_delivery)
+  defp insert_hops_redis([]), do: []
+  defp insert_hops_redis([head | tail]) do
+    dep_id = add_departure(head[:dep_time])
+    arr_id = add_arrival(head[:arr_time])
+    [[dep_id, arr_id]] ++ insert_hops_redis(tail)
   end
 
-  defp link_hops([head | []]) do
-    command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
-    query(command)
-  end
+  defp link_hops([]), do: Logger.debug("Route inserted successfully")
   defp link_hops([head | tail]) do
     command = ["HSET", "dep_#{Enum.at(head, 0)}", "arrival", "arr_#{Enum.at(head, 1)}"]
     query(command)
@@ -83,11 +70,7 @@ defmodule Routing.Redixcontrol do
   end
 
   # [%{:departure => "dep_124", :arrival => "dep_256", :hop_id => "64"}, ...]
-  # TODO What is stored in the database? Key or ID? Currently acting like key
-  def link_hops_db_id([head | []]) do
-    query(["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"])
-    query(["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"])
-  end
+  def link_hops_db_id([]), do: Logger.debug("Linking events to database entries successfull")
   def link_hops_db_id([head | tail]) do
     query(["HSET", "#{head[:from]}", "db_id", "#{head[:hop_id]}"])
     query(["HSET", "#{head[:to]}", "db_id", "#{head[:hop_id]}"])
@@ -95,15 +78,12 @@ defmodule Routing.Redixcontrol do
   end
 
   # TODO maybe merge the two methods for each type is entry to make it more DRY
-  def add_arrival(time, drone, location, is_delivery) do
-    Logger.debug("Adding arrival for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}")
-    id = get_next_id("arr")
+  def add_arrival(time) do
+    Logger.debug("Adding arrival for drone: time: #{time}")
 
+    id = get_next_id("arr")
     commands = [["MULTI"]]
     commands = commands ++ [["HSET", "arr_#{id}", "time", "#{time}"]]
-    commands = commands ++ [["HSET", "arr_#{id}", "drone", "#{drone}"]]
-    commands = commands ++ [["HSET", "arr_#{id}", "location", "#{location}"]]
-    commands = commands ++ [["HSET", "arr_#{id}", "is_delivery", "#{is_delivery}"]]
     commands = commands ++ [["RPUSH", "active_jobs", "arr_#{id}"]]
     commands = commands ++ [["EXEC"]]
     pipe(commands)
@@ -112,15 +92,12 @@ defmodule Routing.Redixcontrol do
     id
   end
 
-  def add_departure(time, drone, location, is_delivery) do
-    Logger.debug("Adding departure for drone: time: #{time}, drone: #{drone}, location: #{location}, is_delivery: #{is_delivery}")
-    id = get_next_id("dep")
+  def add_departure(time) do
+    Logger.debug("Adding departure: time: #{time}")
 
+    id = get_next_id("dep")
     commands = [["MULTI"]]
     commands = commands ++ [["HSET", "dep_#{id}", "time", "#{time}"]]
-    commands = commands ++ [["HSET", "dep_#{id}", "drone", "#{drone}"]]
-    commands = commands ++ [["HSET", "dep_#{id}", "location", "#{location}"]]
-    commands = commands ++ [["HSET", "dep_#{id}", "is_delivery", "#{is_delivery}"]]
     commands = commands ++ [["RPUSH", "active_jobs", "dep_#{id}"]]
     commands = commands ++ [["EXEC"]]
     pipe(commands)
@@ -137,8 +114,6 @@ defmodule Routing.Redixcontrol do
     commands = commands ++ [["LREM", "active_jobs", "1", key]] # set key inactive
     commands = commands ++ [["EXEC"]]
     pipe(commands)
-
-    Logger.debug("Arrival deleted")
   end
 
   def remove_departure(key) when is_bitstring(key) do
@@ -149,8 +124,6 @@ defmodule Routing.Redixcontrol do
     commands = commands ++ [["LREM", "active_jobs", "1", key]] # set key inactive
     commands = commands ++ [["EXEC"]]
     pipe(commands)
-
-    Logger.debug("Departure deleted")
   end
 
   def active_jobs() do
@@ -170,9 +143,7 @@ defmodule Routing.Redixcontrol do
   def get_next_job() do
     next(active_jobs())
   end
-  defp next([]) do
-    []
-  end
+  defp next([]), do: []
   defp next([h | t]) do
     item_time = Timex.parse!(query(["HGET", h, "time"]), Application.fetch_env!(:timex, :datetime_format))
     result = if Timex.diff(Timex.shift(Timex.now, hours: 1), item_time, :seconds) < 0 do
@@ -183,19 +154,12 @@ defmodule Routing.Redixcontrol do
     result
   end
 
-  def get_next_id(from) when is_bitstring(from) do
-    query(["INCR", "#{from}_next_id"])
-  end
+  def get_next_id(from) when is_bitstring(from), do: query(["INCR", "#{from}_next_id"])
 
-  def get(key, worker \\ -1) do
-    query(["GET", "#{key}"], worker)
-  end
+  def get(key, worker \\ -1), do: query(["GET", "#{key}"], worker)
 
-  def set(key, value, worker \\ -1) do
-    query(["SET", "#{key}", "#{value}"], worker)
-  end
+  def set(key, value, worker \\ -1), do: query(["SET", "#{key}", "#{value}"], worker)
 
-  defp randomize() do
-    rem(System.unique_integer([:positive]), 3)
-  end
+  defp randomize(), do: rem(System.unique_integer([:positive]), 3)
 end
+
