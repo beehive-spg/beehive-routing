@@ -32,9 +32,9 @@ defmodule Routing.Routerepo do
     %{route: hops, time: time, is_delivery: delivery} = route
     result = case delivery do
       true ->
-        %{hops: hops, time: Timex.to_unix(time)*1000, origin: ":origin/ORDER"}
+        %{hops: hops, time: Timex.to_unix(time)*1000, origin: ":route.origin/order"}
       false ->
-        %{hops: hops, time: Timex.to_unix(time)*1000, origin: ":origin/DISTRIBUTION"}
+        %{hops: hops, time: Timex.to_unix(time)*1000, origin: ":route.origin/distribution"}
     end
     result
   end
