@@ -33,6 +33,11 @@ defmodule Routing.Secretary do
     # TODO Notify database about completed hop. Update drone status. Update package status. To be implemented.
     dbdata = mapify(Redixcontrol.query(["HGETALL", arr]))
     data = Map.merge(%{type: "arr"}, dbdata)
+    data = Map.get(data, :time)
+           |> Timex.parse!(Application.fetch_env!(:timex, :datetime_format))
+           |> Timex.to_unix
+           |> Kernel.*(1000)
+           |> (fn x -> Map.replace(data, :time, x) end).()
     json = Poison.encode!(data)
     Routing.Eventcomm.publish(json)
     Redixcontrol.remove_arrival(arr)
@@ -41,9 +46,12 @@ defmodule Routing.Secretary do
   def execute_depart(dep) do
     # TODO Notify database about completed hop. Update drone status. Update package status. To be implemented.
     dbdata = mapify(Redixcontrol.query(["HGETALL", dep]))
-    arrival = Redixcontrol.query(["HGET", Map.get(dbdata, :arrival), "location"])
-    mapdata = Map.merge(%{type: "dep", destination: arrival}, dbdata)
-    json = Poison.encode!(mapdata)
+    data = Map.merge(%{type: "dep"}, dbdata)
+    data = Map.get(data, :time)
+           |> Timex.parse!(Application.fetch_env!(:timex, :datetime_format))
+           |> Timex.to_unix
+           |> Kernel.*(1000) |> (fn x -> Map.replace(data, :time, x) end).()
+    json = Poison.encode!(data)
     Routing.Eventcomm.publish(json)
     Redixcontrol.remove_departure(dep)
   end
