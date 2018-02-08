@@ -23,9 +23,7 @@ defmodule Routing.Routecalc do
         # data = build_buffer_data(graph, ideal, delivery)
         data = build_map(ideal, delivery)
         data = Routerepo.get_real_data(data) # Update the costs for the ideal route to the predicted costs
-        # TODO route evaluation when Emin implements post get redirect for adding posts
-        # Redixcontrol.add_route(info)
-        Routerepo.insert_route(data)
+        Routerepo.insert_route(data) |> Redixcontrol.add_route
         data
     end
   end
@@ -39,8 +37,8 @@ defmodule Routing.Routecalc do
   end
   defp do_build_map([from | []]), do: []
   defp do_build_map([from | [to | _] = next]) do
-    from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "")
-    to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "")
+    from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "") |> String.to_integer
+    to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "") |> String.to_integer
     [%{from: from, to: to}] ++ do_build_map(next)
   end
 
