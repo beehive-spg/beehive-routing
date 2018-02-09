@@ -41,7 +41,8 @@ defmodule Routing.Mixfile do
       {:timex, "~> 3.1"},
 
       # HTTP requests
-      {:httpotion, "~> 3.0.2"},
+      # {:httpotion, "~> 3.0.2"},
+      {:httpotion, git: "https://github.com/myfreeweb/httpotion.git", branch: "master"},
 
       # Distance Calculation
       {:distance, "~> 0.2.1"}

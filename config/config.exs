@@ -2,7 +2,7 @@ use Mix.Config
 
 config :routing,
  cloudamqp_url: "amqp://guest:guest@rabbitmq:5672",
- database_url: "beehive-database:3000"
+ database_url: "http://beehive-database:3000"
  # database_url: "localhost:4321"
 
 config :logger,
