@@ -13,7 +13,7 @@ defmodule Routing.Routerepo do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Route inserted successfully")
         # Transforms to fromat that can instantly be inserted into the redis db
-        Poison.decode!(~s/#{b}/) |> transform_to_routing_format
+        Poison.decode!(~s/#{b}/) |> transform_to_redis_format
       %{:body => b, :headers => _, :status_code => s} ->
         Logger.error("Error #{s} occured trying to insert route #{data} on url #{Application.fetch_env!(:routing, :database_url)} with error message #{b}")
     end
@@ -29,9 +29,7 @@ defmodule Routing.Routerepo do
     end
     result
   end
-  def transform_to_routing_format(route) do
-    transform_hops(route["hop/_route"], route["db/id"])
-  end
+  def transform_to_redis_format(route), do: transform_hops(route["hop/_route"], route["db/id"])
   def transform_hops([], _route_id), do: []
   def transform_hops([h | t], route_id) do
     hop = %{dep_time: "#{Timex.from_unix(round(h["hop/starttime"]/1000))}",

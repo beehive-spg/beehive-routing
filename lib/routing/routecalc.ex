@@ -20,10 +20,8 @@ defmodule Routing.Routecalc do
         graph = GenServer.call(:graphrepo, {:get_graph_for, Map.get(data, "from"), Map.get(data, "to")})
         ideal = Graph.shortest_path(graph, :"dp#{Map.get(data, "from")}", :"dp#{Map.get(data, "to")}")
         # TODO currently prefixing dp (because there are only dp in the graph) needs to be adapted when real data is tested
-        # data = build_buffer_data(graph, ideal, delivery)
         data = build_map(ideal, delivery)
         data = Routerepo.get_real_data(data) # Update the costs for the ideal route to the predicted costs
-        Routerepo.insert_route(data) |> Redixcontrol.add_route
         data
     end
   end
