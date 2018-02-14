@@ -2,6 +2,8 @@ defmodule Routing.Routehandler do
   require Logger
 
   alias Routing.Routecalc
+  alias Routing.Routerepo
+  alias Routing.Redixcontrol
 
   def calc_delivery(payload) do
     {status, data} = process_message(payload)
@@ -12,7 +14,7 @@ defmodule Routing.Routehandler do
         {:err, "Invalid data for delivery found: #{data}"}
       true ->
         Logger.info("Order for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
-        calc_route(data, true)
+        calc_route(data, true) |> Routerepo.insert_route |> Redixcontrol.add_route
         {:ok, "Route successfully calculated"}
     end
   end
@@ -26,14 +28,12 @@ defmodule Routing.Routehandler do
         {:err, "Invalid data in data found: #{data}"}
       true ->
         Logger.info("Distribution for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
-        calc_route(data, false)
+        calc_route(data, false) |> Routerepo.insert_route |> Redixcontrol.add_route
         {:ok, "Route successfully calculated"}
     end
   end
 
-  defp calc_route(data, delivery) do
-    Routecalc.calc(data, delivery)
-  end
+  defp calc_route(data, delivery), do: Routecalc.calc(data, delivery)
 
   defp verify_data(data) do
     # TODO implement
