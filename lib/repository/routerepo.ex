@@ -21,6 +21,24 @@ defmodule Routing.Routerepo do
     result
   end
 
+  def insert_order(shop, customer, routeid, generated) do
+    data = %{
+      "shopid"      => shop |> String.to_integer,
+      "customerid"  => customer |> String.to_integer,
+      "route"       => routeid |> String.to_integer,
+      "source"      => (if generated, do: "order.source/generated", else: "order.source/gui")
+    } |> Poison.encode!
+    IO.puts data
+    result = case HTTPotion.post(@url <> "/orders", [body: data, headers: ["Content-Type": "application/json"]]) do
+      %{:body => b, :headers => _, :status_code => 201} ->	
+        Logger.debug("Inserting order succeeded with code 200")
+        Poison.decode!(~s/#{b}/)
+      %{:body => b, :headers => _, :status_code => s} ->
+        Logger.error("Error #{s} occured trying to insert order on url #{@url} with error message #{b}")
+    end
+    result
+  end
+
   def is_reachable(building1, building2) do
     result = case HTTPotion.get(@url <> "/api/reachable/#{building1}/#{building2}") do
       %{:body => b, :headers => _, :status_code => 200} ->	
