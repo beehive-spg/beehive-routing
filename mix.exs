@@ -25,7 +25,7 @@ defmodule Routing.Mixfile do
       {:distillery, "~> 1.5", runtime: false},
 
       # Graph Management
-      {:graphbrewer, "~> 0.1.4"},
+      {:graphbrewer, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
