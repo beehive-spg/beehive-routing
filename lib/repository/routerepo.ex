@@ -28,7 +28,6 @@ defmodule Routing.Routerepo do
       "route"       => routeid |> String.to_integer,
       "source"      => (if generated, do: "order.source/generated", else: "order.source/gui")
     } |> Poison.encode!
-    IO.puts data
     result = case HTTPotion.post(@url <> "/orders", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Inserting order succeeded with code 200")
