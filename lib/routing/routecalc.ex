@@ -27,11 +27,11 @@ defmodule Routing.Routecalc do
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:"get_graph_#{method}", from, to})
             {graph, start_hops} = edge_hop_processing(graph, :"dp#{start_building}")
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            ideal = add_edge_hops(ideal, start_hops, :start)
             tryroute = build_map(ideal, delivery) |> Routerepo.get_real_data |> Routerepo.try_route
             # TODO use config variable for time format
             {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+            ideal = add_edge_hops(ideal, start_hops, :start)
             ideal = add_edge_hops(ideal, end_hops, :end)
             build_map(ideal, delivery)
         end
