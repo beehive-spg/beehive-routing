@@ -9,9 +9,9 @@ COPY mix.exs .
 COPY mix.lock .
 
 # Install deps
-RUN mix deps.get && \
-    mix local.hex --force && \
-    mix local.rebar --force
+RUN mix local.hex --force && \
+    mix local.rebar --force && \
+    mix deps.get
 
 # Build and export executable
 COPY config ./config
