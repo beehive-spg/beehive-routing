@@ -2,7 +2,7 @@
 ### Building ###
 ################
 
-FROM bitwalker/alpine-elixir:1.5 as build
+FROM bitwalker/alpine-elixir:1.6.1 as build
 
 # Import project
 COPY mix.exs .
