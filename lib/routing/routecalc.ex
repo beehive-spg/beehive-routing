@@ -88,7 +88,7 @@ defmodule Routing.Routecalc do
   end
 
   def add_edge_hops(route, edge_hops, :start), do: [edge_hops[Enum.at(route, 1)][:from]] ++ route
-  def add_edge_hops(route, edge_hops, :end), do: route ++ [edge_hops[Enum.at(route, 1)][:from]]
+  def add_edge_hops(route, edge_hops, :end), do: route ++ [edge_hops[Enum.at(route, -2)][:from]]
 
   # TODO format time to ISO:Extended for database: Timex.shift(Timex.from_unix(1517571316145, :milliseconds), [hours: 1])
   # Looks like this in the end:
