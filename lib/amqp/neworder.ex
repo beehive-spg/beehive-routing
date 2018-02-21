@@ -59,11 +59,15 @@ defmodule Routing.Neworder do
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message")
     Basic.ack(chan, tag)
-    case Routehandler.calc_delivery(payload) do
+    {:ok, pid} = Task.Supervisor.start_link()
+    {:ok, result} = Task.Supervisor.async_nolink(pid, Routehandler, :calc_delivery, [payload]) |> Task.yield
+    case result do
       {:err, message} ->
         Logger.warn(message)
       {:ok, message} ->
-        Logger.debug(message)
+        Logger.info(message)
+      message ->
+        Logger.warn("Calculating delivery for #{payload} resulted in an error: #{message}")
     end
     {:noreply, chan}
   end

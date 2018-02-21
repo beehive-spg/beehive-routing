@@ -28,7 +28,6 @@ defmodule Routing.Routerepo do
       "route"       => routeid |> String.to_integer,
       "source"      => (if generated, do: "order.source/generated", else: "order.source/gui")
     } |> Poison.encode!
-    IO.puts data
     result = case HTTPotion.post(@url <> "/orders", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Inserting order succeeded with code 200")
@@ -50,8 +49,20 @@ defmodule Routing.Routerepo do
     result
   end
 
-  defp transform_to_db_format(route) do
-    %{route: hops, time: time, is_delivery: delivery} = route
+  def try_route(route) do
+    data = transform_to_db_format(route) |> Poison.encode!
+    result = case HTTPotion.post(@url <> "/api/tryroute", [body: data, headers: ["Content-Type": "application/json"]]) do
+      %{:body => b, :headers => _, :status_code => 200} ->	
+        Logger.debug("Route inserted successfully")
+        # Transforms to fromat that can instantly be inserted into the redis db
+        Poison.decode!(~s/#{b}/) |> transform_to_redis_format
+      %{:body => b, :headers => _, :status_code => s} ->
+        Logger.error("Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}")
+    end
+    result
+  end
+
+  defp transform_to_db_format(%{route: hops, time: time, is_delivery: delivery}) do
     result = case delivery do
       true ->
         %{hops: hops, time: Timex.to_unix(time)*1000, origin: "route.origin/order"}

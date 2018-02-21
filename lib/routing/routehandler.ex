@@ -15,10 +15,10 @@ defmodule Routing.Routehandler do
       true ->
         Logger.info("Order for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
         route = calc_route(data, true) |> Routerepo.insert_route
-        routeid = Enum.at(route, 0) |> Map.get(:route_id)
+        routeid = Enum.at(route, 0)[:route_id]
         Routerepo.insert_order(data["from"], data["to"], routeid, false)
         Redixcontrol.add_route(route)
-        {:ok, "Route successfully calculated"}
+        {:ok, "Delivery with route id #{routeid} successfully calculated"}
     end
   end
 
@@ -31,8 +31,10 @@ defmodule Routing.Routehandler do
         {:err, "Invalid data in data found: #{data}"}
       true ->
         Logger.info("Distribution for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
-        calc_route(data, false) |> Routerepo.insert_route |> Redixcontrol.add_route
-        {:ok, "Route successfully calculated"}
+        route = calc_route(data, false) |> Routerepo.insert_route
+        Redixcontrol.add_route(route)
+        routeid = Enum.at(route, 0)[:route_id]
+        {:ok, "Distribution with routeid #{routeid} successfully calculated"}
     end
   end
 

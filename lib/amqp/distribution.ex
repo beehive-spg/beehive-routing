@@ -59,11 +59,15 @@ defmodule Routing.Distribution do
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message")
     Basic.ack(chan, tag)
-    case Routehandler.calc_distribution(payload) do
+    {:ok, pid} = Task.Supervisor.start_link()
+    {:ok, result} = Task.Supervisor.async_nolink(pid, Routehandler, :calc_distribution, [payload]) |> Task.yield
+    case result do
       {:err, message} ->
         Logger.warn(message)
       {:ok, message} ->
-        Logger.debug(message)
+        Logger.info(message)
+      unknown ->
+        Logger.warn("Calculating distribution for #{payload} resulted in an error: #{unknown}")
     end
     {:noreply, chan}
   end

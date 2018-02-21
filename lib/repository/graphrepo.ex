@@ -30,6 +30,11 @@ defmodule Routing.Graphrepo do
     {:reply, {graph, start_building["db/id"], target_building["db/id"]}, graph}
   end
 
+  def handle_call({:update_edges, toupdate, target, graph}, _from, _state) do
+    graph = do_update(graph, target, Map.keys(toupdate), toupdate)
+    {:reply, graph, graph}
+  end
+
   defp build_graph(from, to) do
     hives = get_hives()
     edges = get_edges(from["db/id"], to["db/id"]) #NOTE workaraound because it only works with building ids for now
@@ -39,6 +44,7 @@ defmodule Routing.Graphrepo do
   defp get_building_for(id, table) do
     case table do
       :buildings ->
+        # TODO change to hives because only hives are requested here
         result = case HTTPotion.get(@url <> "/one/buildings/#{id}") do
           %{:body => b, :headers => _, :status_code => 200} ->
             Logger.debug("Fetching building succeeded with code 200")
@@ -69,7 +75,8 @@ defmodule Routing.Graphrepo do
 
   defp do_find_entitiy([], entity, description), do: Logger.error("Could not find entity for id #{entity} and description #{description}")
   defp do_find_entitiy([h | t], entity, description) do
-    case Map.get(h, "building/#{description}") |> Enum.at(0) |> Map.get("db/id") do
+    result = Map.get(h, "building/#{description}") |> Enum.at(0) |> Map.get("db/id")
+    case result do
       ^entity ->
         h
       _ -> 
@@ -103,6 +110,7 @@ defmodule Routing.Graphrepo do
     # (depends on graph brewer if it is able to update an existing graph)
     graph = add_nodes(hives, from, to)
     graph = add_edges(edges, graph)
+    graph = filter_errors(graph)
     graph
   end
 
@@ -130,11 +138,29 @@ defmodule Routing.Graphrepo do
     graph
   end
 
+  defp filter_errors(graph) do
+    Map.keys(graph.nodes) |> do_filter_errors(graph)
+  end
+  defp do_filter_errors([], graph), do: graph
+  defp do_filter_errors([h | t], graph) do
+    case Graph.get_node(graph, h) do
+      %{costs: 0, label: nil} ->
+        do_filter_errors(t, Graph.delete_node(graph, h))
+      _ ->
+        do_filter_errors(t, graph)
+    end
+  end
+
   defp get_heur_costs_buildings(from, to) do
     round(Distance.GreatCircle.distance(
       {Map.get(from, "building/xcoord"), Map.get(from, "building/ycoord")},
       {Map.get(to, "building/xcoord"), Map.get(to, "building/ycoord")}
     ))
+  end
+
+  defp do_update(graph, _target, [], _data), do: graph
+  defp do_update(graph, target, [from | t], data) do
+    do_update(graph, target, t, data) |> Graph.add_edge(from, target, data[from][:costs])
   end
 end
 

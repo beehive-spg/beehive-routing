@@ -24,8 +24,6 @@ services:
     image: langhaarzombie/beehive-routing
     ports:
     - "5671:5671"
-    env_file:
-    - .env
     depends_on:
     - rabbitmq
     - redis
