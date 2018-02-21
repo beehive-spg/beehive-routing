@@ -160,7 +160,7 @@ defmodule Routing.Graphrepo do
 
   defp do_update(graph, _target, [], _data), do: graph
   defp do_update(graph, target, [from | t], data) do
-    do_update(graph, target, t, data) |> Graph.add_edge(from, target, Map.get(data, from) |> Map.get(:costs))
+    do_update(graph, target, t, data) |> Graph.add_edge(from, target, data[from][:costs])
   end
 end
 
