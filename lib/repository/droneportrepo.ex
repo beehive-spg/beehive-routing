@@ -31,7 +31,7 @@ defmodule Routing.Droneportrepo do
   end
 
   def get_predicted_cost_factor(data, building, :give) do
-    2 - Map.get(data, building) / 20
+    round(1 - Map.get(data, building) / 20)
   end
 end
 
