@@ -91,7 +91,7 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
     "redix.host": [
       commented: false,
       datatype: :binary,
-      default: "redis",
+      default: "localhost",
       doc: "Provide documentation for redix.host here.",
       hidden: false,
       to: "redix.host"
@@ -112,13 +112,29 @@ See the moduledoc for `Conform.Schema.Validator` for more details and examples.
       hidden: false,
       to: "timex.datetime_format"
     ],
+    "tzdata.autoupdate": [
+      commented: false,
+      datatype: :atom,
+      default: :disabled,
+      doc: "Provide documentation for tzdata.autoupdate here.",
+      hidden: false,
+      to: "tzdata.autoupdate"
+    ],
     "routing.cloudamqp_url": [
       commented: false,
       datatype: :binary,
-      default: "amqp://nldowwmg:z9o08tVtONKfD_5LSUGoCikbixo1Yu27@impala.rmq.cloudamqp.com/nldowwmg",
+      default: "amqp://guest:guest@rabbitmq:5672",
       doc: "Provide documentation for routing.cloudamqp_url here.",
       hidden: false,
       to: "routing.cloudamqp_url"
+    ],
+    "routing.database_url": [
+      commented: false,
+      datatype: :binary,
+      default: "localhost:4321",
+      doc: "Provide documentation for routing.database_url here.",
+      hidden: false,
+      to: "routing.database_url"
     ],
     "routing.Elixir.Routing.Secretary.overlap": [
       commented: false,
