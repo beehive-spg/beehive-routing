@@ -7,8 +7,16 @@ defmodule Routing.Routecalc do
   alias Routing.Droneportrepo
 
   def setup do
-    {:ok, _} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
-    Logger.info("Graphhandler started.")
+    # {:ok, _} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
+    # Logger.info("Graphhandler started.")
+    case GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo) do
+      {:ok, _} ->
+        Logger.info("Graphhandler started.")
+      {:error, {:already_started, _}} ->
+        # NOTE it is not known why it would ever take that branch, but it
+        # but it occured during performance test
+        Logger.info("Graphhandler already started ...")
+    end
   end
 
   def calc(data, delivery) do
@@ -27,12 +35,11 @@ defmodule Routing.Routecalc do
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:"get_graph_#{method}", from, to})
             {graph, start_hops} = edge_hop_processing(graph, :"dp#{start_building}")
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            tryroute = build_map(ideal, delivery) |> Routerepo.get_real_data |> Routerepo.try_route
+            tryroute = build_map(ideal, delivery) |> Routerepo.try_route
             # TODO use config variable for time format
             {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            ideal = add_edge_hops(ideal, start_hops, :start)
-            ideal = add_edge_hops(ideal, end_hops, :end)
+            ideal = complete_route(ideal, start_hops, end_hops)
             build_map(ideal, delivery)
         end
         data
@@ -51,6 +58,10 @@ defmodule Routing.Routecalc do
             :distribution
         end
     end
+  end
+
+  defp complete_route(route, start_hops, end_hops) do
+    add_edge_hops(route, start_hops, :start) |> add_edge_hops(end_hops, :end)
   end
 
   # Requires from and to to be in :dp<number> format

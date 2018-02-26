@@ -1,24 +1,26 @@
 defmodule Routing.Routerepo do
   require Logger
 
-  @url Application.fetch_env!(:routing, :database_url)
+  # NOTE upon receiving an error on some routes a retry is initiated.
+  # This is necessary to work around a knwon bug that occurs when
+  # the database has been running for a longer time.
+  # It is not yet known why the bug appears, but this fixes it.
+  # In case of endless warning messages, restart the application or
+  # terminate the process.
 
-  def get_real_data(route) do
-    data = Poison.encode!(route)
-    route
-  end
+  @url Application.fetch_env!(:routing, :database_url)
 
   def insert_route(route) do
     data = transform_to_db_format(route) |> Poison.encode!
-    result = case HTTPotion.post(@url <> "/routes", [body: data, headers: ["Content-Type": "application/json"]]) do
+    case HTTPotion.post(@url <> "/routes", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Route inserted successfully")
         # Transforms to fromat that can instantly be inserted into the redis db
-        Poison.decode!(~s/#{b}/) |> transform_to_redis_format
+        redis = Poison.decode!(~s/#{b}/) |> transform_to_redis_format
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.error("Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}")
+        Logger.warn("Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}. Now retrying ...")
+        insert_route(route)
     end
-    result
   end
 
   def insert_order(shop, customer, routeid, generated) do
@@ -33,7 +35,8 @@ defmodule Routing.Routerepo do
         Logger.debug("Inserting order succeeded with code 200")
         Poison.decode!(~s/#{b}/)
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.error("Error #{s} occured trying to insert order on url #{@url} with error message #{b}")
+        Logger.warn("Error #{s} occured trying to insert order #{data} on url #{@url} with error message #{b}. Now retrying ...")
+        insert_order(shop, customer, routeid, generated)
     end
     result
   end
@@ -44,7 +47,7 @@ defmodule Routing.Routerepo do
         Logger.debug("Is reachable from #{building1} to #{building2} succeeded with code 200")
         Poison.decode!(~s/#{b}/)
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.error("Error #{s} occured trying to check reachable for #{building1} and #{building2} on url #{@url} with error message #{b}")
+        Logger.warn("Error #{s} occured trying to check reachable for #{building1} and #{building2} on url #{@url} with error code #{s} and message #{b}")
     end
     result
   end
@@ -57,7 +60,8 @@ defmodule Routing.Routerepo do
         # Transforms to fromat that can instantly be inserted into the redis db
         Poison.decode!(~s/#{b}/) |> transform_to_redis_format
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.error("Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}")
+        Logger.warn("Error #{s} occured trying to fetch predicted route information for #{data} on url #{@url} with error message #{b}. Now retrying ...")
+        try_route(route)
     end
     result
   end

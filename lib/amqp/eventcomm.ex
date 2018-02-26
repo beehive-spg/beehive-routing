@@ -43,7 +43,7 @@ defmodule Routing.Eventcomm do
   def publish(data) do
     case GenServer.whereis(:eventcomm) do
       nil ->
-        {:ok, _} = start_link()
+        start_link()
         publish(data)
       _ ->
         GenServer.cast(:eventcomm, {:send, data})

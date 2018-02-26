@@ -9,12 +9,13 @@ defmodule Routing.Distribution do
 
   def init(_args), do: connect_rabbitmq()
 
+  @url      Application.fetch_env!(:routing, :cloudamqp_url)
   @exchange "distributionex"
   @queue    "distribution"
   @error    "#{@queue}_error"
   
   def connect_rabbitmq do
-    case Connection.open("#{Application.fetch_env!(:routing, :cloudamqp_url)}") do
+    case Connection.open(@url) do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
@@ -23,8 +24,8 @@ defmodule Routing.Distribution do
         {:ok, _consumer_tag} = Basic.consume(chan, @queue)
         {:ok, chan}
 
-      {status, message} ->
-        Logger.warn("Unknown connection state: #{status}, #{message}")
+      {_status, _message} ->
+        Logger.warn("Cannot connect to RabbitMQ with url #{@url}")
         :timer.sleep(1000)
         connect_rabbitmq()
     end
@@ -58,17 +59,20 @@ defmodule Routing.Distribution do
   # Handling received message
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message")
+    consume(payload)
     Basic.ack(chan, tag)
-    {:ok, pid} = Task.Supervisor.start_link()
-    {:ok, result} = Task.Supervisor.async_nolink(pid, Routehandler, :calc_distribution, [payload]) |> Task.yield
-    case result do
-      {:err, message} ->
+    {:noreply, chan}
+  end
+
+  def consume(payload) do
+    case Routehandler.calc_distribution(payload) do
+      {:error, message} ->
         Logger.warn(message)
       {:ok, message} ->
         Logger.info(message)
-      unknown ->
-        Logger.warn("Calculating distribution for #{payload} resulted in an error: #{unknown}")
+      message ->
+        Logger.warn("Calculating delivery for #{payload} resulted in an unkown error: #{message}")
     end
-    {:noreply, chan}
   end
 end
+
