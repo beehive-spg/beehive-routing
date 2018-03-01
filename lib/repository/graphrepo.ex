@@ -116,8 +116,8 @@ defmodule Routing.Graphrepo do
 
   # TODO nil is a workaround to enable first inserting of shop and cust
   defp add_nodes(hives, from, to) do
-    graph = Graph.add_node(Graph.new, :"dp#{Map.get(to, "db/id")}", %{costs: 0, label: "Start"})
-            |> Graph.add_node(:"dp#{Map.get(from, "db/id")}", %{costs: get_heur_costs_buildings(from, to), label: "End"})
+    graph = Graph.add_node(Graph.new, :"dp#{Map.get(to, "db/id")}", %{costs: 0, label: "Target"})
+            |> Graph.add_node(:"dp#{Map.get(from, "db/id")}", %{costs: get_heur_costs_buildings(from, to), label: "Start"})
     add_nodes(hives, from, to, graph)
   end
   defp add_nodes([], _, _, graph), do: graph
