@@ -52,13 +52,17 @@ defmodule Routing.Routerepo do
     result
   end
 
-  def try_route(route) do
+  def try_route(route, format \\ false) do
     data = transform_to_db_format(route) |> Poison.encode!
     result = case HTTPotion.post(@url <> "/api/tryroute", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 200} ->	
         Logger.debug("Route inserted successfully")
         # Transforms to fromat that can instantly be inserted into the redis db
-        Poison.decode!(~s/#{b}/) |> transform_to_redis_format
+        map = Poison.decode!(~s/#{b}/)
+        if format do
+          map = transform_to_redis_format(map)
+        end
+        map
       %{:body => b, :headers => _, :status_code => s} ->
         Logger.warn("Error #{s} occured trying to fetch predicted route information for #{data} on url #{@url} with error message #{b}. Now retrying ...")
         try_route(route)
@@ -67,13 +71,12 @@ defmodule Routing.Routerepo do
   end
 
   defp transform_to_db_format(%{route: hops, time: time, is_delivery: delivery}) do
-    result = case delivery do
+    case delivery do
       true ->
         %{hops: hops, time: Timex.to_unix(time)*1000, origin: "route.origin/order"}
       false ->
         %{hops: hops, time: Timex.to_unix(time)*1000, origin: "route.origin/distribution"}
     end
-    result
   end
 
   defp transform_to_redis_format(route), do: transform_hops(route["hop/_route"], route["db/id"])
