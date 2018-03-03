@@ -10,8 +10,8 @@ defmodule Routing.Graphrepo do
 
     Logger.debug("Fetching graph for shop: #{start} to customer: #{target}")
 
-    start_building = get_building_for(start, :shops)
-    target_building = get_building_for(target, :customers)
+    start_building = get_building_for(start)
+    target_building = get_building_for(target)
     graph = build_graph(start_building, target_building)
 
     {:reply, {graph, start_building["db/id"], target_building["db/id"]}, graph}
@@ -35,10 +35,25 @@ defmodule Routing.Graphrepo do
     {:reply, graph, graph}
   end
 
+  def handle_call({:delete_edges, todelete, target, graph}, _from, _state) do
+    graph = do_deletion(graph, target, todelete)
+    {:reply, graph, graph}
+  end
+
   defp build_graph(from, to) do
     hives = get_hives()
     edges = get_edges(from["db/id"], to["db/id"]) #NOTE workaraound because it only works with building ids for now
     transform_to_graph(hives, edges, from, to)
+  end
+
+  def get_building_for(id) do
+    result = case HTTPotion.get(@url <> "/api/tobuilding/#{id}") do
+      %{:body => b, :headers => _, :status_code => 200} ->
+        Logger.debug("Fetching tobuilding succeeded with code 200")
+        Poison.decode!(~s/#{b}/) |> Enum.at(0)
+      %{:body => b, :headers => _, :status_code => s} ->
+        Logger.error("Fetching tobuilding returned a bad status code: #{s} with error message #{b}")
+    end
   end
 
   defp get_building_for(id, table) do
@@ -116,8 +131,8 @@ defmodule Routing.Graphrepo do
 
   # TODO nil is a workaround to enable first inserting of shop and cust
   defp add_nodes(hives, from, to) do
-    graph = Graph.add_node(Graph.new, :"dp#{Map.get(to, "db/id")}", %{costs: 0, label: "Start"})
-            |> Graph.add_node(:"dp#{Map.get(from, "db/id")}", %{costs: get_heur_costs_buildings(from, to), label: "End"})
+    graph = Graph.add_node(Graph.new, :"dp#{Map.get(to, "db/id")}", %{costs: 0, label: "Target"})
+            |> Graph.add_node(:"dp#{Map.get(from, "db/id")}", %{costs: get_heur_costs_buildings(from, to), label: "Start"})
     add_nodes(hives, from, to, graph)
   end
   defp add_nodes([], _, _, graph), do: graph
@@ -161,6 +176,11 @@ defmodule Routing.Graphrepo do
   defp do_update(graph, _target, [], _data), do: graph
   defp do_update(graph, target, [from | t], data) do
     do_update(graph, target, t, data) |> Graph.add_edge(from, target, data[from][:costs])
+  end
+
+  defp do_deletion(graph, target, []), do: graph
+  defp do_deletion(graph, target, [from | t]) do
+    do_deletion(graph, target, t) |> Graph.delete_edge(from, target)
   end
 end
 

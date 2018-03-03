@@ -14,17 +14,17 @@ defmodule Routing.Dronerepo do
 
   # TODO methods currently return static value as of the bad return value of the /drones route
 
-  def get_dronespeed(id) do
+  def get_dronespeed(_id) do
     15
     # drone = get_drone(id)
   end
 
-  def get_dronerange(id) do
+  def get_dronerange(_id) do
     5000
     # drone = get_drone(id)
   end
 
-  def get_dronechargetime(id) do
+  def get_dronechargetime(_id) do
     1800
     # drone = get_drone(id)
   end
