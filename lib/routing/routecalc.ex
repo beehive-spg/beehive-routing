@@ -29,44 +29,70 @@ defmodule Routing.Routecalc do
         from = Map.get(data, "from")
         to = Map.get(data, "to")
 
-        data = case decide_on_method(delivery, from, to) do
+        data = case decide_on_method(delivery) do
           :direct ->
             build_map([:"dp#{from}", :"dp#{to}"], false)
-          method ->
-            {graph, start_building, target_building} = GenServer.call(:graphrepo, {:"get_graph_#{method}", from, to})
-
-            {graph, start_hops} = edge_hop_processing(graph, :"dp#{start_building}", :start)
-            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            tryroute = build_map(ideal, delivery)
-            tryroute = Routerepo.try_route(tryroute, true)
-
-            # TODO use config variable for time format
-            {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
-            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
-
-            {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
-            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}") |> complete_route(start_hops, end_hops)
-            tryroute = build_map(ideal, delivery) |> Routerepo.try_route
-
-            fac_map = get_factors(tryroute["hop/_route"], start_building, target_building)
-            # fac_map
-            build_map(ideal, delivery)
+          :delivery ->
+            {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
+            perform_calculation(graph, start_building, target_building, true)
+          :dumb ->
+            {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
         end
         data
     end
   end
 
-  defp decide_on_method(delivery, from, to) do
-    cond do
-      delivery ->
-        :delivery
-      !delivery ->
-        case Routerepo.is_reachable(from, to) do
+  defp decide_on_method(delivery) do
+    case delivery do
+      :delivery -> :delivery
+      :distribution -> :direct
+      :dumb -> :dumb
+    end
+  end
+
+  def perform_calculation(init_graph, start_building, target_building, delivery) do
+    perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil})
+  end
+  def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff} = previous) do
+    {graph, start_hops} = edge_hop_processing(init_graph, :"dp#{start_building}", :start)
+    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    tryroute = build_map(ideal, delivery)
+    tryroute = Routerepo.try_route(tryroute, true)
+
+    # TODO use config variable for time format
+    {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
+    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
+
+    {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
+    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}") |> complete_route(start_hops, end_hops)
+    tryroute = build_map(ideal, delivery) |> Routerepo.try_route
+    ranking = get_factors(tryroute["hop/_route"], start_building, target_building) |> Enum.sort_by(&(elem(&1, 1)))
+    timediff = Enum.at(tryroute["hop/_route"], -1)["hop/endtime"] - Enum.at(tryroute["hop/_route"], 0)["hop/starttime"]
+    score = Enum.count(ranking, fn(x) -> elem(x, 1) < 0 end) + 1
+
+    case previous do
+      {nil, nil, nil, nil} ->
+        cond do
+          Enum.empty?(ranking) ->
+            build_map(ideal, delivery)
+          score > 1 ->
+            perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff})
           true ->
-            :direct
-          false ->
-            :distribution
+            build_map(ideal, delivery)
+        end
+      {_, _, _, _} ->
+        if timediff <= old_timediff * (1+old_score/10) && score <= old_score do
+          perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff})
+        else
+          case old_ranking do
+            [] ->
+              old_route
+            _ ->
+              {to_delete, old_ranking} = Enum.split(old_ranking, 1)
+              init_graph = GenServer.call(:graphrepo, {:delete_nodes, Keyword.keys(to_delete), graph})
+              perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff})
+          end
         end
     end
   end
