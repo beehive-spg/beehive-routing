@@ -14,7 +14,7 @@ defmodule Routing.Routecalc do
       {:ok, _} ->
         Logger.info("Graphhandler started.")
       {:error, {:already_started, _}} ->
-        # NOTE it is not known why it would ever take that branch, but it
+        # NOTE it is not known why it would ever take that branch,
         # but it occured during performance test
         Logger.info("Graphhandler already started ...")
     end
@@ -35,21 +35,23 @@ defmodule Routing.Routecalc do
           method ->
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:"get_graph_#{method}", from, to})
 
-            {graph, start_hops} = edge_hop_processing(graph, :"dp#{start_building}")
-
+            {graph, start_hops} = edge_hop_processing(graph, :"dp#{start_building}", :start)
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
             tryroute = build_map(ideal, delivery)
             tryroute = Routerepo.try_route(tryroute, true)
 
             # TODO use config variable for time format
-            {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
-
+            {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
             tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
 
-            fac_map = get_factors(tryroute["hop/_route"], graph)
+            {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
+            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+            tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
+
+            # fac_map = get_factors(tryroute["hop/_route"], graph)
             # fac_map
-            build_map(ideal, delivery)
+            # build_map(ideal, delivery)
         end
         data
     end
@@ -70,35 +72,47 @@ defmodule Routing.Routecalc do
   end
 
   # Requires from and to to be in :dp<number> format
-  def edge_hop_processing(graph, target, time \\ Timex.now) do
-    {pairs, unreachable_targets} = get_edge_hop_pairs(graph, target, time)
+  def edge_hop_processing(graph, target, type, time \\ Timex.now) do
+    {pairs, unreachable_targets} = get_edge_hop_pairs(graph, target, type, time)
     graph = GenServer.call(:graphrepo, {:update_edges, pairs, target, graph})
     graph = GenServer.call(:graphrepo, {:delete_edges, unreachable_targets, target, graph})
     {graph, pairs}
   end
 
-  def get_edge_hop_pairs(graph, id, time) do
+  def get_edge_hop_pairs(graph, id, type, time) do
     neighbors = graph.edges |> Map.get(id) |> MapSet.to_list |> Map.new(fn(x) -> {x[:to], x[:costs]} end)
     predictions = Map.keys(neighbors) |> Droneportrepo.get_predictions_for(Timex.to_unix(time))
-    get_pairs(Map.keys(neighbors), Map.keys(predictions), neighbors, predictions) |> filter_for_best_option
+    get_pairs(Map.keys(neighbors), Map.keys(predictions), neighbors, predictions, type) |> filter_for_best_option
   end
 
-  defp get_pairs([], _p, _neighbors, _predictions), do: %{}
-  defp get_pairs([h | t], p, neighbors, predictions) do
-    Map.merge(get_pairs(t, p, neighbors, predictions), %{h => match(p, h, neighbors, predictions)})
+  defp get_pairs([], _p, _neighbors, _predictions, _type), do: %{}
+  defp get_pairs([h | t], p, neighbors, predictions, type) do
+    Map.merge(get_pairs(t, p, neighbors, predictions, type), %{h => match(p, h, neighbors, predictions, type)})
   end
 
-  defp match([], _to, _neighbors, _predictions), do: []
-  defp match([h | t], to, neighbors, predictions) do
+  defp match([], _to, _neighbors, _predictions, _type), do: []
+  defp match([h | t], to, neighbors, predictions, type) do
     # TODO consider a different approach for cost calculation where costs do not skyrocket (see pictre in WhatsApp)
-    takefac = Droneportrepo.get_predicted_cost_factor(predictions, h, :take)
-    givefac = Droneportrepo.get_predicted_cost_factor(predictions, to, :give)
+    # NOTE differenciating here is important because end hops have taking and giving switched around
+    {takefac, givefac} = case type do
+      :start ->
+        {Droneportrepo.get_predicted_cost_factor(predictions, h, :take),
+          Droneportrepo.get_predicted_cost_factor(predictions, to, :give)}
+      :end ->
+        {Droneportrepo.get_predicted_cost_factor(predictions, h, :give),
+          Droneportrepo.get_predicted_cost_factor(predictions, to, :take)}
+    end
     result = if neighbors[h] + neighbors[to] < Dronerepo.get_dronerange(0) do
-      [%{from: h, costs: neighbors[h] * takefac + neighbors[to] * givefac}]
+      [%{from: h,
+        costs: neighbors[h] * takefac + neighbors[to] * givefac,
+        dist_to: neighbors[to],
+        dist_from: neighbors[h],
+        costs_to: neighbors[to] * givefac,
+        costs_from: neighbors[h] * takefac}]
     else
       []
     end
-    Enum.concat(match(t, to, neighbors, predictions), result)
+    Enum.concat(match(t, to, neighbors, predictions, type), result)
   end
 
   defp filter_for_best_option(pairs) do
@@ -115,6 +129,30 @@ defmodule Routing.Routecalc do
         best = Map.get(pairs, key) |> Enum.min_by(fn(x) -> x[:costs] end)
         {Map.merge(p, %{key => best}), tr}
     end
+  end
+
+  defp correct_start_target_connection(graph, start, target, start_hops, end_hops) do
+    in_start = Map.keys(start_hops) |> Enum.member?(target)
+    in_end   = Map.keys(end_hops) |> Enum.member?(start)
+    case {in_start, in_end} do
+      {false, true} ->
+        end_hops = Map.delete(end_hops, start)
+        graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
+      {true, false} ->
+        start_hops = Map.delete(start_hops, target)
+        graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
+      {true, true} ->
+        if start_hops[target][:dist_from] + start_hops[target][:dist_to] + end_hops[start][:dist_from] < Dronerepo.get_dronerange(0) do
+          # Costs from hive to shop + from hive to cust + from cust to hive
+          costs = start_hops[target][:costs_from] + start_hops[target][:dist_to] + end_hops[start][:costs_from]
+          graph = GenServer.call(:graphrepo, {:update_edges, %{start => %{costs: costs}}, target, graph})
+        else
+          start_hops = Map.delete(start_hops, target)
+          end_hops = Map.delete(end_hops, start)
+          graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
+        end
+    end
+    {graph, start_hops, end_hops}
   end
 
   defp complete_route(route, start_hops, end_hops) do
