@@ -38,6 +38,8 @@ defmodule Routing.Routecalc do
           :dumb ->
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
             ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+            # Complete Route in dumb way
+            ideal = complete_route_dumb(graph, ideal, start_building, target_building)
             build_map(ideal, true)
         end
         data
@@ -187,6 +189,24 @@ defmodule Routing.Routecalc do
 
   defp complete_route(route, start_hops, end_hops) do
     add_edge_hops(route, start_hops, :start) |> add_edge_hops(end_hops, :end)
+  end
+
+  defp complete_route_dumb(graph, route, start, target) do
+    sid = :"dp#{start}"
+    tid = :"dp#{target}" 
+    first_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
+    start = graph.edges[sid]
+            |> MapSet.to_list
+            |> Enum.filter(fn(x) -> (x[:costs] + first_edge[:costs]) > Dronerepo.get_dronerange(0) end)
+            |> Enum.filter(fn(x) -> x[:to] == tid end)
+            |> Enum.at(0)
+    last_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
+    last = graph.edges[tid]
+           |> MapSet.to_list
+           |> Enum.filter(fn(x) -> (x[:costs] + last_edge[:costs]) > Dronerepo.get_dronerange(0) end)
+           |> Enum.filter(fn(x) -> x[:to] == sid end)
+           |> Enum.at(0)
+    Enum.concat([start[:to]], route) |> Enum.concat([last[:to]])
   end
 
   def add_edge_hops(route, edge_hops, :start), do: [edge_hops[Enum.at(route, 1)][:from]] ++ route
