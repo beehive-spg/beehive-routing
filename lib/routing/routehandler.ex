@@ -37,7 +37,7 @@ defmodule Routing.Routehandler do
         routeid = Enum.at(route, 0)[:route_id]
         Routerepo.insert_order(data["from"], data["to"], routeid, true)
         Redixcontrol.add_route(route)
-        {:ok, "Delivery with route id #{routeid} successfully calculated"}
+        {:ok, "Generated delivery with route id #{routeid} successfully calculated"}
     end
   end
 
@@ -55,7 +55,7 @@ defmodule Routing.Routehandler do
         routeid = Enum.at(route, 0)[:route_id]
         Routerepo.insert_order(data["from"], data["to"], routeid, true) # Only generated orders can be dumb
         Redixcontrol.add_route(route)
-        {:ok, "Delivery with route id #{routeid} successfully calculated"}
+        {:ok, "Dumb delivery with route id #{routeid} successfully calculated"}
     end
   end
 
