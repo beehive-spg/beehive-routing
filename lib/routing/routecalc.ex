@@ -46,12 +46,12 @@ defmodule Routing.Routecalc do
             tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
 
             {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
-            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
+            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}") |> complete_route(start_hops, end_hops)
+            tryroute = build_map(ideal, delivery) |> Routerepo.try_route
 
-            # fac_map = get_factors(tryroute["hop/_route"], graph)
+            fac_map = get_factors(tryroute["hop/_route"], start_building, target_building)
             # fac_map
-            # build_map(ideal, delivery)
+            build_map(ideal, delivery)
         end
         data
     end
@@ -151,6 +151,8 @@ defmodule Routing.Routecalc do
           end_hops = Map.delete(end_hops, start)
           graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
         end
+      {false, false} ->
+        false
     end
     {graph, start_hops, end_hops}
   end
@@ -162,22 +164,24 @@ defmodule Routing.Routecalc do
   def add_edge_hops(route, edge_hops, :start), do: [edge_hops[Enum.at(route, 1)][:from]] ++ route
   def add_edge_hops(route, edge_hops, :end), do: route ++ [edge_hops[Enum.at(route, -2)][:from]]
 
-  def get_factors(route, _graph) do
-    hop = Enum.at(route, 1)
-    id = :"dp#{hop["hop/end"]["db/id"]}"
-    costs = [id]
-            |> Droneportrepo.get_predictions_for(hop["hop/endtime"])
-            |> Droneportrepo.pass_packet_costs(id, Enum.at(route, 0)["hop/distance"] + hop["hop/distance"])
-
-    [{id, costs}] ++ do_get_factors(Enum.slice(route, 2..-3))
-  end
-  def do_get_factors([]), do: []
-  def do_get_factors([h | t]) do
-    id = :"dp#{h["hop/end"]["db/id"]}"
-    costs = [id]
-            |> Droneportrepo.get_predictions_for(h["hop/endtime"])
-            |> Droneportrepo.pass_packet_costs(id, h["hop/distance"])
-    [{id, costs}] ++ do_get_factors(t)
+  def get_factors([], _start, _target), do: []
+  def get_factors([prev | [h | t] = next], start, target) do
+    previd = :"dp#{prev["hop/end"]["db/id"]}"
+    hid = :"dp#{h["hop/end"]["db/id"]}"
+    cond do
+      h["hop/end"]["db/id"] == target ->
+        get_factors([], start, target)
+      h["hop/start"]["db/id"] == start ->
+          costs = [hid]
+                  |> Droneportrepo.get_predictions_for(h["hop/endtime"])
+                  |> Droneportrepo.pass_packet_costs(hid, prev["hop/distance"] + h["hop/distance"])
+        Enum.concat([{hid, costs}], get_factors(next, start, target))
+      true ->
+        costs = [hid]
+                |> Droneportrepo.get_predictions_for(h["hop/endtime"])
+                |> Droneportrepo.pass_packet_costs(hid, h["hop/distance"])
+        Enum.concat([{hid, costs}], get_factors(next, start, target))
+    end
   end
 
   # TODO make private
