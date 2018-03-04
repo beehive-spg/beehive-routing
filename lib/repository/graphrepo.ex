@@ -36,7 +36,12 @@ defmodule Routing.Graphrepo do
   end
 
   def handle_call({:delete_edges, todelete, target, graph}, _from, _state) do
-    graph = do_deletion(graph, target, todelete)
+    graph = do_delete_edges(graph, target, todelete)
+    {:reply, graph, graph}
+  end
+  
+  def handle_call({:delete_nodes, todelete, graph}, _from, _state) do
+    graph = do_delete_nodes(graph, todelete)
     {:reply, graph, graph}
   end
 
@@ -178,9 +183,15 @@ defmodule Routing.Graphrepo do
     do_update(graph, target, t, data) |> Graph.add_edge(from, target, data[from][:costs])
   end
 
-  defp do_deletion(graph, target, []), do: graph
-  defp do_deletion(graph, target, [from | t]) do
-    do_deletion(graph, target, t) |> Graph.delete_edge(from, target)
+  defp do_delete_edges(graph, _target, []), do: graph
+  defp do_delete_edges(graph, target, [from | t]) do
+    do_delete_edges(graph, target, t) |> Graph.delete_edge(from, target)
   end
+
+  defp do_delete_nodes(graph, []), do: graph
+  defp do_delete_nodes(graph, [n | t]) do
+    do_delete_nodes(graph, t) |> Graph.delete_node(n)
+  end
+
 end
 
