@@ -23,6 +23,24 @@ defmodule Routing.Routehandler do
     end
   end
 
+  def calc_generated(payload) do
+    {status, data} = process_message(payload)
+    cond do
+      status == :err ->
+        {:err, data}
+      !verify_data(data) ->
+        {:err, "Invalid data for delivery found: #{data}"}
+      true ->
+        Logger.info("Order for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
+        route = calc_route(data, :delivery) # TODO check for error
+        route = Routerepo.insert_route(route)
+        routeid = Enum.at(route, 0)[:route_id]
+        Routerepo.insert_order(data["from"], data["to"], routeid, true)
+        Redixcontrol.add_route(route)
+        {:ok, "Delivery with route id #{routeid} successfully calculated"}
+    end
+  end
+
   def calc_dumb_delivery(payload) do
     {status, data} = process_message(payload)
     cond do
@@ -35,7 +53,7 @@ defmodule Routing.Routehandler do
         route = calc_route(data, :dumb) # TODO check for error
         route = Routerepo.insert_route(route)
         routeid = Enum.at(route, 0)[:route_id]
-        Routerepo.insert_order(data["from"], data["to"], routeid, false)
+        Routerepo.insert_order(data["from"], data["to"], routeid, true) # Only generated orders can be dumb
         Redixcontrol.add_route(route)
         {:ok, "Delivery with route id #{routeid} successfully calculated"}
     end
