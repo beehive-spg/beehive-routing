@@ -18,6 +18,7 @@ defmodule Routing.Eventcomm do
         {:ok, chan} = Channel.open(conn)
         setup_queue(chan)
         Basic.qos(chan, prefetch_count: 100)
+        Logger.info("Eventcomm registered for exchange #{@exchange} and queue #{@queue}")
         {:ok, chan}
 
       {status, message} ->
@@ -36,6 +37,7 @@ defmodule Routing.Eventcomm do
 
   # Handle down notification - try to reconnect
   def handle_info({:DOWN, _, :process, _pid, _reason}, _) do
+    Logger.info("Connection canceled unexpectedly for Eventcomm")
     {:ok, chan} = connect_rabbitmq()
     {:noreply, chan}
   end

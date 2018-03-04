@@ -37,6 +37,8 @@ defmodule Routing.Routecalc do
             perform_calculation(graph, start_building, target_building, true)
           :dumb ->
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
+            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+            build_map(ideal, true)
         end
         data
     end

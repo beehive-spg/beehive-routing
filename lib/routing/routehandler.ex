@@ -14,7 +14,26 @@ defmodule Routing.Routehandler do
         {:err, "Invalid data for delivery found: #{data}"}
       true ->
         Logger.info("Order for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
-        route = calc_route(data, :delivery) |> Routerepo.insert_route
+        route = calc_route(data, :delivery) # TODO check for error
+        route = Routerepo.insert_route(route)
+        routeid = Enum.at(route, 0)[:route_id]
+        Routerepo.insert_order(data["from"], data["to"], routeid, false)
+        Redixcontrol.add_route(route)
+        {:ok, "Delivery with route id #{routeid} successfully calculated"}
+    end
+  end
+
+  def calc_dumb_delivery(payload) do
+    {status, data} = process_message(payload)
+    cond do
+      status == :err ->
+        {:err, data}
+      !verify_data(data) ->
+        {:err, "Invalid data for delivery found: #{data}"}
+      true ->
+        Logger.info("Order for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
+        route = calc_route(data, :dumb) # TODO check for error
+        route = Routerepo.insert_route(route)
         routeid = Enum.at(route, 0)[:route_id]
         Routerepo.insert_order(data["from"], data["to"], routeid, false)
         Redixcontrol.add_route(route)
@@ -31,7 +50,8 @@ defmodule Routing.Routehandler do
         {:err, "Invalid data in data found: #{data}"}
       true ->
         Logger.info("Distribution for: ID: #{data["id"]}: #{data["from"]}, #{data["to"]}")
-        route = calc_route(data, :distribution) |> Routerepo.insert_route
+        route = calc_route(data, :distribution) # TODO check for error
+        route = Routerepo.insert_route(route)
         Redixcontrol.add_route(route)
         routeid = Enum.at(route, 0)[:route_id]
         {:ok, "Distribution with routeid #{routeid} successfully calculated"}
@@ -40,7 +60,7 @@ defmodule Routing.Routehandler do
 
   defp calc_route(data, delivery), do: Routecalc.calc(data, delivery)
 
-  defp verify_data(data) do
+  defp verify_data(_data) do
     # TODO implement
     true
   end

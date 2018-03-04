@@ -40,13 +40,13 @@ defmodule Routing.Neworder do
 
   # Handling confirmation of registering the consumer
   def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, chan) do
-    Logger.info("Consumer #{consumer_tag} registered for exchange #{@exchange} and queue #{@queue}")
+    Logger.info("Neworder #{consumer_tag} registered for exchange #{@exchange} and queue #{@queue}")
     {:noreply, chan}
   end
 
   # Handling unexpected cancelling
   def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, chan) do
-    Logger.info("Connection canceled unexpectedly for consumer #{consumer_tag}")
+    Logger.info("Connection canceled unexpectedly for Neworder #{consumer_tag}")
     {:stop, :normal, chan}
   end
 
