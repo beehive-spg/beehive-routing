@@ -236,7 +236,7 @@ defmodule Routing.Routecalc do
   # Looks like this in the end:
   # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
   def build_map(route, delivery) do
-    start_time = Timex.shift(Timex.now, [hours: 1, seconds: 5]) # Five seconds delay for a route to be flown
+    start_time = Timex.shift(Timex.now, [hours: 1])
     %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
   end
   defp do_build_map([_from | []]), do: []
