@@ -21,6 +21,9 @@ defmodule Routing.Routehandler do
         Redixcontrol.add_route(route)
         {:ok, "Delivery with route id #{routeid} successfully calculated"}
     end
+  rescue
+    e in RuntimeError -> {:err, e.message}
+    e in MatchError -> e.term
   end
 
   def calc_generated(payload) do
@@ -39,6 +42,9 @@ defmodule Routing.Routehandler do
         Redixcontrol.add_route(route)
         {:ok, "Generated delivery with route id #{routeid} successfully calculated"}
     end
+  rescue
+    e in RuntimeError -> {:err, e.message}
+    e in MatchError -> e.term
   end
 
   def calc_dumb_delivery(payload) do
@@ -57,6 +63,9 @@ defmodule Routing.Routehandler do
         Redixcontrol.add_route(route)
         {:ok, "Dumb delivery with route id #{routeid} successfully calculated"}
     end
+  rescue
+    e in RuntimeError -> {:err, e.message}
+    e in MatchError -> e.term
   end
 
   def calc_distribution(payload) do
@@ -74,6 +83,9 @@ defmodule Routing.Routehandler do
         routeid = Enum.at(route, 0)[:route_id]
         {:ok, "Distribution with routeid #{routeid} successfully calculated"}
     end
+  rescue
+    e in RuntimeError -> {:err, e.message}
+    e in MatchError -> e.term
   end
 
   defp calc_route(data, delivery), do: Routecalc.calc(data, delivery)
