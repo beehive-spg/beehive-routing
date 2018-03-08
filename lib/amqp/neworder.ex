@@ -10,7 +10,7 @@ defmodule Routing.Neworder do
   def init(_args), do: connect_rabbitmq()
 
   @url      Application.fetch_env!(:routing, :cloudamqp_url)
-  @exchange "amq.direct"
+  @exchange "newx"
   @queue    "new_orders"
   @error    "#{@queue}_error"
 
@@ -66,8 +66,9 @@ defmodule Routing.Neworder do
 
   def consume(payload) do
     case Routehandler.calc_delivery(payload) do
-      {:error, message} ->
-        Logger.warn(message)
+      {:err, message} ->
+        IO.inspect(message) |> Logger.warn
+        # Logger.warn(message)
       {:ok, message} ->
         Logger.info(message)
       message ->

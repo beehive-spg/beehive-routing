@@ -66,7 +66,7 @@ defmodule Routing.Generated do
 
   def consume(payload) do
     case Routehandler.calc_generated(payload) do
-      {:error, message} ->
+      {:err, message} ->
         Logger.warn(message)
       {:ok, message} ->
         Logger.info(message)

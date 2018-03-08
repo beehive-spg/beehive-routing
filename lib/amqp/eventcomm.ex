@@ -3,6 +3,7 @@ defmodule Routing.Eventcomm do
   use AMQP
   require Logger
 
+  def start_link(_args), do: start_link()
   def start_link, do: GenServer.start(__MODULE__, [], name: :eventcomm)
 
   def init(_args), do: connect_rabbitmq()

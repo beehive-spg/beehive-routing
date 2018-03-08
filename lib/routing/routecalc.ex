@@ -8,8 +8,6 @@ defmodule Routing.Routecalc do
   alias Routing.Dronerepo
 
   def setup do
-    # {:ok, _} = GenServer.start_link(Graphrepo, Graph.new, name: :graphrepo)
-    # Logger.info("Graphhandler started.")
     case GenServer.start(Graphrepo, Graph.new, name: :graphrepo) do
       {:ok, _} ->
         Logger.info("Graphhandler started.")
@@ -37,7 +35,7 @@ defmodule Routing.Routecalc do
             perform_calculation(graph, start_building, target_building, true)
           :dumb ->
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
-            ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+            {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
             # Complete Route in dumb way
             ideal = complete_route_dumb(graph, ideal, start_building, target_building)
             build_map(ideal, true)
@@ -58,18 +56,26 @@ defmodule Routing.Routecalc do
     perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil})
   end
   def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff} = previous) do
-    {graph, start_hops} = edge_hop_processing(init_graph, :"dp#{start_building}", :start)
-    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    case edge_hop_processing(init_graph, :"dp#{start_building}", :start) do
+      {graph, start_hops} ->
+        Logger.debug("Shop reachability confirmed")
+        graph = graph
+        start_hops = start_hops
+      {:err, message} ->
+        raise message
+    end
+    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
     tryroute = build_map(ideal, delivery)
     tryroute = Routerepo.try_route(tryroute, true)
 
     # TODO use config variable for time format
     {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
-    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
     tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
 
     {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
-    ideal = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}") |> complete_route(start_hops, end_hops)
+    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    ideal = complete_route(ideal, start_hops, end_hops)
     tryroute = build_map(ideal, delivery) |> Routerepo.try_route
     ranking = get_factors(tryroute["hop/_route"], start_building, target_building) |> Enum.sort_by(&(elem(&1, 1)))
     timediff = Enum.at(tryroute["hop/_route"], -1)["hop/endtime"] - Enum.at(tryroute["hop/_route"], 0)["hop/starttime"]
@@ -103,16 +109,30 @@ defmodule Routing.Routecalc do
 
   # Requires from and to to be in :dp<number> format
   def edge_hop_processing(graph, target, type, time \\ Timex.now) do
-    {pairs, unreachable_targets} = get_edge_hop_pairs(graph, target, type, time)
-    graph = GenServer.call(:graphrepo, {:update_edges, pairs, target, graph})
-    graph = GenServer.call(:graphrepo, {:delete_edges, unreachable_targets, target, graph})
-    {graph, pairs}
+    case get_edge_hop_pairs(graph, target, type, time) do
+      {:ok, pairs, unreachable_targets} ->
+        graph = GenServer.call(:graphrepo, {:update_edges, pairs, target, graph})
+        graph = GenServer.call(:graphrepo, {:delete_edges, unreachable_targets, target, graph})
+        {graph, pairs}
+      {:err, message} ->
+        {:err, message <> target}
+    end
   end
 
   def get_edge_hop_pairs(graph, id, type, time) do
-    neighbors = graph.edges |> Map.get(id) |> MapSet.to_list |> Map.new(fn(x) -> {x[:to], x[:costs]} end)
-    predictions = Map.keys(neighbors) |> Droneportrepo.get_predictions_for(Timex.to_unix(time))
-    get_pairs(Map.keys(neighbors), Map.keys(predictions), neighbors, predictions, type) |> filter_for_best_option
+    case graph.edges |> Map.get(id) do
+      nil ->
+        {:err, "Target unreachable"}
+      neighbors ->
+        neighbors = neighbors
+                    |> MapSet.to_list
+                    |> Map.new(fn(x) -> {x[:to], x[:costs]} end)
+        predictions = neighbors
+                      |> Map.keys
+                      |> Droneportrepo.get_predictions_for(Timex.to_unix(time))
+        {pairs, unreachable} = get_pairs(Map.keys(neighbors), Map.keys(predictions), neighbors, predictions, type) |> filter_for_best_option
+        {:ok, pairs, unreachable}
+    end
   end
 
   defp get_pairs([], _p, _neighbors, _predictions, _type), do: %{}
@@ -197,14 +217,14 @@ defmodule Routing.Routecalc do
     first_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
     start = graph.edges[sid]
             |> MapSet.to_list
-            |> Enum.filter(fn(x) -> (x[:costs] + first_edge[:costs]) > Dronerepo.get_dronerange(0) end)
-            |> Enum.filter(fn(x) -> x[:to] == tid end)
+            |> Enum.filter(fn(x) -> (x[:costs] + first_edge[:costs]) < Dronerepo.get_dronerange(0) end)
+            |> Enum.filter(fn(x) -> x[:to] != tid end)
             |> Enum.at(0)
-    last_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
+    last_edge = Graph.get_edge(graph, Enum.at(route, -2), Enum.at(route, -1))
     last = graph.edges[tid]
            |> MapSet.to_list
-           |> Enum.filter(fn(x) -> (x[:costs] + last_edge[:costs]) > Dronerepo.get_dronerange(0) end)
-           |> Enum.filter(fn(x) -> x[:to] == sid end)
+           |> Enum.filter(fn(x) -> (x[:costs] + last_edge[:costs]) < Dronerepo.get_dronerange(0) end)
+           |> Enum.filter(fn(x) -> x[:to] != sid end)
            |> Enum.at(0)
     Enum.concat([start[:to]], route) |> Enum.concat([last[:to]])
   end
@@ -236,7 +256,7 @@ defmodule Routing.Routecalc do
   # Looks like this in the end:
   # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
   def build_map(route, delivery) do
-    start_time = Timex.shift(Timex.now, [hours: 1, seconds: 5]) # Five seconds delay for a route to be flown
+    start_time = Timex.shift(Timex.now, [hours: 1])
     %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
   end
   defp do_build_map([_from | []]), do: []

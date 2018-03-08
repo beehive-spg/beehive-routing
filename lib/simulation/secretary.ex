@@ -20,7 +20,7 @@ defmodule Routing.Secretary do
   end
 
   def execute_job(job) do
-    Logger.info("Executing #{job}")
+    # Logger.info("Executing #{job}")
     prefix = String.split(job, "_")
     case prefix do
       ["arr", _] -> execute_arrival(job)
@@ -40,7 +40,11 @@ defmodule Routing.Secretary do
            |> (fn x -> Map.replace(data, :time, x) end).()
     json = Poison.encode!(data)
     Routing.Eventcomm.publish(json)
+    Map.update!(data, :hop_id, &(String.to_integer(&1)))
+      |> Map.update!(:route_id, &(String.to_integer(&1)))
+      |> Routing.Routerepo.notify_arrival
     Redixcontrol.remove_arrival(arr)
+    Logger.info("Executed arrival #{arr} for hop #{data[:hop_id]} in route #{data[:route_id]}")
   end
 
   def execute_depart(dep) do
@@ -53,7 +57,12 @@ defmodule Routing.Secretary do
            |> Kernel.*(1000) |> (fn x -> Map.replace(data, :time, x) end).()
     json = Poison.encode!(data)
     Routing.Eventcomm.publish(json)
+    Map.update!(data, :hop_id, &(String.to_integer(&1)))
+      |> Map.update!(:route_id, &(String.to_integer(&1)))
+      |> Map.delete(:arrival)
+      |> Routing.Routerepo.notify_departure
     Redixcontrol.remove_departure(dep)
+    Logger.info("Executed departure #{dep} for hop #{data[:hop_id]} in route #{data[:route_id]}")
   end
 
   def unknown_job(job) do

@@ -70,6 +70,26 @@ defmodule Routing.Routerepo do
     result
   end
 
+  def notify_departure(hop) do
+    data = Poison.encode!(hop)
+    case HTTPotion.post(@url <> "/api/departure", [body: data, headers: ["Content-Type": "application/json"]]) do
+      %{:body => b, :headers => _, :status_code => 204} ->	
+        Logger.debug("Notifying about departure succeeded")
+      %{:body => b, :headers => _, :status_code => s} ->
+        Logger.warn("Error #{s} occured trying to notify departure information for #{data} on url #{@url} with error message #{b}")
+    end
+  end
+
+  def notify_arrival(hop) do
+    data = Poison.encode!(hop)
+    case HTTPotion.post(@url <> "/api/arrival", [body: data, headers: ["Content-Type": "application/json"]]) do
+      %{:body => b, :headers => _, :status_code => 204} ->	
+        Logger.debug("Notifying about arrival succeeded")
+      %{:body => b, :headers => _, :status_code => s} ->
+        Logger.warn("Error #{s} occured trying to notify arrival information for #{data} on url #{@url} with error message #{b}")
+    end
+  end
+
   defp transform_to_db_format(%{route: hops, time: time, is_delivery: delivery}) do
     case delivery do
       true ->
