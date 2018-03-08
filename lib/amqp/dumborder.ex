@@ -66,7 +66,7 @@ defmodule Routing.Dumborder do
 
   def consume(payload) do
     case Routehandler.calc_dumb_delivery(payload) do
-      {:error, message} ->
+      {:err, message} ->
         Logger.warn(message)
       {:ok, message} ->
         Logger.info(message)

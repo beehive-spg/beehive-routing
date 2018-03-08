@@ -66,7 +66,7 @@ defmodule Routing.Distribution do
 
   def consume(payload) do
     case Routehandler.calc_distribution(payload) do
-      {:error, message} ->
+      {:err, message} ->
         Logger.warn(message)
       {:ok, message} ->
         Logger.info(message)
