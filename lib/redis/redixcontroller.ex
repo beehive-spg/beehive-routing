@@ -142,7 +142,6 @@ defmodule Routing.Redixcontrol do
     result = if Timex.diff(Timex.shift(Timex.now, minutes: 59, seconds: 57), item_time, :seconds) < 0 do
       next(t)
     else
-      IO.puts("It is #{Timex.now |> Timex.shift(hours: 1)} and event is to executed at #{item_time}")
       [h] ++ next(t)
     end
     result

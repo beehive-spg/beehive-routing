@@ -30,7 +30,6 @@ defmodule Routing.Secretary do
   end
 
   def execute_arrival(arr) do
-    # TODO Notify database about completed hop. Update drone status. Update package status. To be implemented.
     dbdata = mapify(Redixcontrol.query(["HGETALL", arr]))
     data = Map.merge(%{type: "arr"}, dbdata)
     data = Map.get(data, :time)
@@ -39,6 +38,20 @@ defmodule Routing.Secretary do
            |> Kernel.*(1000)
            |> (fn x -> Map.replace(data, :time, x) end).()
     json = Poison.encode!(data)
+
+    case HTTPotion.get("http://beehive-database:3000/one/hops/#{data[:hop_id]}") do
+      %{:body => b, :headers => _, :status_code => 200} ->	
+        if b == "" do
+          Logger.info("!! ERROR !! Arrival hop #{:hop_id} does not exist")
+        else
+          Logger.info("Success: Arrival hop to be executed exists")
+        end
+      _ ->
+        Logger.error("Could not check for hop")
+    end
+
+    # TODO publish notification to frontend only of database confirms event (when Emin fixes the bug)
+
     Routing.Eventcomm.publish(json)
     Map.update!(data, :hop_id, &(String.to_integer(&1)))
       |> Map.update!(:route_id, &(String.to_integer(&1)))
@@ -48,7 +61,6 @@ defmodule Routing.Secretary do
   end
 
   def execute_depart(dep) do
-    # TODO Notify database about completed hop. Update drone status. Update package status. To be implemented.
     dbdata = mapify(Redixcontrol.query(["HGETALL", dep]))
     data = Map.merge(%{type: "dep"}, dbdata)
     data = Map.get(data, :time)
@@ -56,6 +68,18 @@ defmodule Routing.Secretary do
            |> Timex.to_unix
            |> Kernel.*(1000) |> (fn x -> Map.replace(data, :time, x) end).()
     json = Poison.encode!(data)
+
+    case HTTPotion.get("http://beehive-database:3000/one/hops/#{data[:hop_id]}") do
+      %{:body => b, :headers => _, :status_code => 200} ->	
+        if b == "" do
+          Logger.info("!! ERROR !! Departure hop #{:hop_id} does not exist")
+        else
+          Logger.info("Success: Departure hop to be executed exists")
+        end
+      _ ->
+        Logger.error("Could not check for hop")
+    end
+
     Routing.Eventcomm.publish(json)
     Map.update!(data, :hop_id, &(String.to_integer(&1)))
       |> Map.update!(:route_id, &(String.to_integer(&1)))

@@ -31,14 +31,22 @@ defmodule Routing.Routecalc do
           :direct ->
             build_map([:"dp#{from}", :"dp#{to}"], false)
           :delivery ->
-            {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
-            perform_calculation(graph, start_building, target_building, true)
+            case GenServer.call(:graphrepo, {:get_graph_delivery, from, to}) do
+              {:err, message} ->
+                raise message
+              {graph, start_building, target_building} ->
+                perform_calculation(graph, start_building, target_building, true)
+            end
           :dumb ->
             {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
-            {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-            # Complete Route in dumb way
-            ideal = complete_route_dumb(graph, ideal, start_building, target_building)
-            build_map(ideal, true)
+            case GenServer.call(:graphrepo, {:get_graph_delivery, from, to}) do
+              {:err, message} ->
+                raise message
+              {graph, start_building, target_building} ->
+                {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+                ideal = complete_route_dumb(graph, ideal, start_building, target_building)
+                build_map(ideal, true)
+            end
         end
         data
     end
@@ -65,13 +73,11 @@ defmodule Routing.Routecalc do
         raise message
     end
     {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-    tryroute = build_map(ideal, delivery)
-    tryroute = Routerepo.try_route(tryroute, true)
+    tryroute = build_map(ideal, delivery) |> Routerepo.try_route(true)
 
     # TODO use config variable for time format
+    # TODO handle if customer cannot be reached
     {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
-    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
-    tryroute = complete_route(ideal, start_hops, end_hops) |> build_map(delivery) |> Routerepo.try_route
 
     {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
     {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
