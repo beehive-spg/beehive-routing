@@ -4,6 +4,7 @@ defmodule Routing.Neworder do
   require Logger
 
   alias Routing.Routehandler
+  alias Routing.Errorcomm
 
   def start_link(_opts), do: GenServer.start(__MODULE__, [], [])
 
@@ -12,7 +13,6 @@ defmodule Routing.Neworder do
   @url      Application.fetch_env!(:routing, :cloudamqp_url)
   @exchange "newx"
   @queue    "new_orders"
-  @error    "#{@queue}_error"
 
   def connect_rabbitmq do
     case Connection.open(@url) do
@@ -32,7 +32,6 @@ defmodule Routing.Neworder do
   end
 
   def setup_queue(chan) do
-    Queue.declare(chan, @error, durable: true)
     Queue.declare(chan, @queue, durable: true)
     Exchange.direct(chan, @exchange, durable: true) # Declaring the exchange
     Queue.bind(chan, @queue, @exchange) # Binding the two above
@@ -67,8 +66,8 @@ defmodule Routing.Neworder do
   def consume(payload) do
     case Routehandler.calc_delivery(payload) do
       {:err, message} ->
-        IO.inspect(message) |> Logger.warn
-        # Logger.warn(message)
+        Logger.warn(message)
+        Errorcomm.publish(message)
       {:ok, message} ->
         Logger.info(message)
       message ->

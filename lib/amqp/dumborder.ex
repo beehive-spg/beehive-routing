@@ -4,6 +4,7 @@ defmodule Routing.Dumborder do
   require Logger
 
   alias Routing.Routehandler
+  alias Routing.Errorcomm
 
   def start_link(_opts), do: GenServer.start(__MODULE__, [], [])
 
@@ -12,7 +13,6 @@ defmodule Routing.Dumborder do
   @url      Application.fetch_env!(:routing, :cloudamqp_url)
   @exchange "dumbx"
   @queue    "dumb_order"
-  @error    "#{@queue}_error"
 
   def connect_rabbitmq do
     case Connection.open(@url) do
@@ -32,7 +32,6 @@ defmodule Routing.Dumborder do
   end
 
   def setup_queue(chan) do
-    Queue.declare(chan, @error, durable: true)
     Queue.declare(chan, @queue, durable: true)
     Exchange.direct(chan, @exchange, durable: true) # Declaring the exchange
     Queue.bind(chan, @queue, @exchange) # Binding the two above
@@ -68,6 +67,7 @@ defmodule Routing.Dumborder do
     case Routehandler.calc_dumb_delivery(payload) do
       {:err, message} ->
         Logger.warn(message)
+        Errorcomm.publish(message)
       {:ok, message} ->
         Logger.info(message)
       message ->
