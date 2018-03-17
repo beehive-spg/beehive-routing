@@ -10,24 +10,34 @@ defmodule Routing.Graphrepo do
 
     Logger.debug("Fetching graph for shop: #{start} to customer: #{target}")
 
-    start_building = get_building_for(start)
-    target_building = get_building_for(target)
-    graph = build_graph(start_building, target_building)
-
-    {:reply, {graph, start_building["db/id"], target_building["db/id"]}, graph}
+    with start_building <- get_building_for(start),
+         target_building <- get_building_for(target),
+         false <- is_atom(start_building), # If get_building_for logs an error it returns an atom, this needs to be caught
+         false <- is_atom(target_building) do
+      graph = build_graph(start_building, target_building)
+      {:reply, {graph, start_building["db/id"], target_building["db/id"]}, graph}
+    else
+      _ ->
+        {:reply, {:err, "Could not build delivery graph for #{start} to #{target}"}, nil}
+    end
   end
   
   def handle_call({:get_graph_distribution, start, target}, _from, _state) do
     start = String.to_integer(start)
     target = String.to_integer(target)
 
-    Logger.debug("Fetching graph for distribution building from: #{start} to building to: #{target}")
+    Logger.debug("Fetching graph for distribution from: #{start} to building to: #{target}")
 
-    start_building = get_building_for(start, :buildings)
-    target_building = get_building_for(target, :buildings)
+    with start_building <- get_building_for(start, :buildings),
+         target_building <- get_building_for(target, :buildings),
+          false <- is_atom(start_building),
+          false <- is_atom(target_building) do
     graph = build_graph(start_building, target_building)
-
     {:reply, {graph, start_building["db/id"], target_building["db/id"]}, graph}
+    else
+      _ ->
+        {:reply, {:err, "Could not build distribution graph for #{start} to #{target}"}, nil}
+    end
   end
 
   def handle_call({:update_edges, toupdate, target, graph}, _from, _state) do
@@ -52,10 +62,15 @@ defmodule Routing.Graphrepo do
   end
 
   def get_building_for(id) do
-    result = case HTTPotion.get(@url <> "/api/tobuilding/#{id}") do
+    case HTTPotion.get(@url <> "/api/tobuilding/#{id}") do
       %{:body => b, :headers => _, :status_code => 200} ->
         Logger.debug("Fetching tobuilding succeeded with code 200")
-        Poison.decode!(~s/#{b}/) |> Enum.at(0)
+        case Poison.decode!(~s/#{b}/) |> Enum.at(0) do
+          nil ->
+            Logger.error("Got an empty list when requesting building for #{id}")
+          build ->
+            build
+        end
       %{:body => b, :headers => _, :status_code => s} ->
         Logger.error("Fetching tobuilding returned a bad status code: #{s} with error message #{b}")
     end
@@ -105,7 +120,6 @@ defmodule Routing.Graphrepo do
   end
 
   defp get_hives do
-    # TODO implement to include Shop and Customer
     case HTTPotion.get("#{Application.fetch_env!(:routing, :database_url)}/hives") do
       %{:body => b, :headers => _, :status_code => 200} ->
         Logger.debug("Fetching hives succeded with code 200")
@@ -192,6 +206,5 @@ defmodule Routing.Graphrepo do
   defp do_delete_nodes(graph, [n | t]) do
     do_delete_nodes(graph, t) |> Graph.delete_node(n)
   end
-
 end
 
