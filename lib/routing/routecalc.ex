@@ -81,7 +81,7 @@ defmodule Routing.Routecalc do
     {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
     {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
     ideal = complete_route(ideal, start_hops, end_hops)
-    tryroute = build_map(ideal, delivery) |> Routerepo.try_route
+    tryroute = build_map(ideal, delivery) |> Routerepo.try_route(false)
     ranking = get_factors(tryroute["hop/_route"], start_building, target_building) |> Enum.sort_by(&(elem(&1, 1)))
     timediff = Enum.at(tryroute["hop/_route"], -1)["hop/endtime"] - Enum.at(tryroute["hop/_route"], 0)["hop/starttime"]
     score = Enum.count(ranking, fn(x) -> elem(x, 1) < 0 end) + 1
