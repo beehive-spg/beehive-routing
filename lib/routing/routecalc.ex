@@ -38,7 +38,6 @@ defmodule Routing.Routecalc do
                 perform_calculation(graph, start_building, target_building, true)
             end
           :dumb ->
-            {graph, start_building, target_building} = GenServer.call(:graphrepo, {:get_graph_delivery, from, to})
             case GenServer.call(:graphrepo, {:get_graph_delivery, from, to}) do
               {:err, message} ->
                 raise message
@@ -65,12 +64,12 @@ defmodule Routing.Routecalc do
   end
   def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff} = previous) do
     case edge_hop_processing(init_graph, :"dp#{start_building}", :start) do
+      {:err, message} ->
+        raise message
       {graph, start_hops} ->
         Logger.debug("Shop reachability confirmed")
         graph = graph
         start_hops = start_hops
-      {:err, message} ->
-        raise message
     end
     {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
     tryroute = build_map(ideal, delivery) |> Routerepo.try_route(true)
@@ -182,7 +181,7 @@ defmodule Routing.Routecalc do
       [] ->
         {p, Enum.concat(tr, [key])}
       options ->
-        best = Map.get(pairs, key) |> Enum.min_by(fn(x) -> x[:costs] end)
+        best = options |> Enum.min_by(fn(x) -> x[:costs] end)
         {Map.merge(p, %{key => best}), tr}
     end
   end
@@ -190,13 +189,15 @@ defmodule Routing.Routecalc do
   defp correct_start_target_connection(graph, start, target, start_hops, end_hops) do
     in_start = Map.keys(start_hops) |> Enum.member?(target)
     in_end   = Map.keys(end_hops) |> Enum.member?(start)
-    case {in_start, in_end} do
+    result = case {in_start, in_end} do
       {false, true} ->
         end_hops = Map.delete(end_hops, start)
         graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
+        {graph, start_hops, end_hops}
       {true, false} ->
         start_hops = Map.delete(start_hops, target)
         graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
+        {graph, start_hops, end_hops}
       {true, true} ->
         if start_hops[target][:dist_from] + start_hops[target][:dist_to] + end_hops[start][:dist_from] < Dronerepo.get_dronerange(0) do
           # Costs from hive to shop + from hive to cust + from cust to hive
@@ -207,10 +208,11 @@ defmodule Routing.Routecalc do
           end_hops = Map.delete(end_hops, start)
           graph = GenServer.call(:graphrepo, {:delete_edges, [start], target, graph})
         end
+        {graph, start_hops, end_hops}
       {false, false} ->
-        false
+        {graph, start_hops, end_hops}
     end
-    {graph, start_hops, end_hops}
+    result
   end
 
   defp complete_route(route, start_hops, end_hops) do
@@ -239,8 +241,7 @@ defmodule Routing.Routecalc do
   def add_edge_hops(route, edge_hops, :end), do: route ++ [edge_hops[Enum.at(route, -2)][:from]]
 
   def get_factors([], _start, _target), do: []
-  def get_factors([prev | [h | t] = next], start, target) do
-    previd = :"dp#{prev["hop/end"]["db/id"]}"
+  def get_factors([prev | [h | _t] = next], start, target) do
     hid = :"dp#{h["hop/end"]["db/id"]}"
     cond do
       h["hop/end"]["db/id"] == target ->
