@@ -60,11 +60,12 @@ defmodule Routing.Routecalc do
   end
 
   def perform_calculation(init_graph, start_building, target_building, delivery) do
-    perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil})
+    perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil, false})
   end
-  def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff} = previous) do
+  def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept} = previous) do
     case edge_hop_processing(init_graph, :"dp#{start_building}", :start) do
       {:err, message} ->
+        Logger.info("Shop not reachable")
         raise message
       {graph, start_hops} ->
         Logger.debug("Shop reachability confirmed")
@@ -82,40 +83,72 @@ defmodule Routing.Routecalc do
     {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
     ideal = complete_route(ideal, start_hops, end_hops)
     tryroute = build_map(ideal, delivery) |> Routerepo.try_route(false)
+
     ranking = get_factors(tryroute["hop/_route"], start_building, target_building) |> Enum.sort_by(&(elem(&1, 1)))
     timediff = Enum.at(tryroute["hop/_route"], -1)["hop/endtime"] - Enum.at(tryroute["hop/_route"], 0)["hop/starttime"]
     score = Enum.count(ranking, fn(x) -> elem(x, 1) < 0 end) + 1
+    accept = Enum.count(ranking, fn(x) -> elem(x, 1) == -20 end) == 0
+
+    # IO.puts("--------")
+    # IO.puts("Route:")
+    # IO.puts(" Old: #{Kernel.inspect(old_route)} \n vs \n New: #{Kernel.inspect(ideal)}")
+    # IO.puts("Ranking:")
+    # IO.puts(" Old: #{Kernel.inspect(old_ranking)} \n vs \n New: #{Kernel.inspect(ranking)}")
+    # IO.puts("Score:")
+    # IO.puts(" Old: #{Kernel.inspect(old_score)} \n vs \n New: #{Kernel.inspect(score)}")
+    # IO.puts("Timediff:")
+    # IO.puts(" Old: #{Kernel.inspect(old_timediff)} \n vs \n New: #{Kernel.inspect(timediff)}")
+    # IO.puts("Accepted:")
+    # IO.puts(" Old: #{Kernel.inspect(old_accept)} \n vs \n New: #{Kernel.inspect(accept)}")
+    # IO.puts("--------")
 
     case previous do
-      {nil, nil, nil, nil} ->
+      {nil, nil, nil, nil, false} ->
         cond do
-          Enum.empty?(ranking) ->
+          Enum.empty?(ranking) && accept ->
             build_map(ideal, delivery)
           score > 1 ->
-            perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff})
-          true ->
+            perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
+          accept ->
             build_map(ideal, delivery)
+          true ->
+            raise "Route calculation reached unknown state"
         end
-      {_, _, _, _} ->
-        if timediff <= old_timediff * (1+old_score/10) && score <= old_score do
-          perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff})
+      {_, _, _, _, _} ->
+        if timediff <= old_timediff * (1+old_score/10) && score < old_score do
+          IO.puts("#{timediff} <= #{old_timediff} * #{(1+old_score/10)} && #{score} < #{old_score}")
+          perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
         else
           case old_ranking do
             [] ->
-              old_route
+              cond do
+                accept ->
+                  old_route
+                !accept ->
+                  raise "No efficient route was found"
+              end
             _ ->
               {to_delete, old_ranking} = Enum.split(old_ranking, 1)
-              init_graph = GenServer.call(:graphrepo, {:delete_nodes, Keyword.keys(to_delete), graph})
-              perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff})
+              IO.inspect(to_delete)
+              init_graph = GenServer.call(:graphrepo, {:delete_nodes, Keyword.keys(to_delete), init_graph})
+              perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept})
           end
         end
     end
+  rescue
+    e in MatchError ->
+      if old_route != nil && old_accept do
+        old_route |> build_map(delivery)
+      else
+        raise "No efficient route was found"
+      end
   end
 
   # Requires from and to to be in :dp<number> format
   def edge_hop_processing(graph, target, type, time \\ Timex.now) do
     case get_edge_hop_pairs(graph, target, type, time) do
       {:ok, pairs, unreachable_targets} ->
+        # IO.inspect(unreachable_targets)
         graph = GenServer.call(:graphrepo, {:update_edges, pairs, target, graph})
         graph = GenServer.call(:graphrepo, {:delete_edges, unreachable_targets, target, graph})
         {graph, pairs}
