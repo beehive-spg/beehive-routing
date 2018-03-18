@@ -29,7 +29,7 @@ defmodule Routing.Routecalc do
 
         data = case decide_on_method(delivery) do
           :direct ->
-            build_map([:"dp#{from}", :"dp#{to}"], false)
+            build_map([atom("dp#{from}"), atom("dp#{to}")], false)
           :delivery ->
             case GenServer.call(:graphrepo, {:get_graph_delivery, from, to}) do
               {:err, message} ->
@@ -42,7 +42,7 @@ defmodule Routing.Routecalc do
               {:err, message} ->
                 raise message
               {graph, start_building, target_building} ->
-                {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+                {:ok, ideal} = Graph.shortest_path(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
                 ideal = complete_route_dumb(graph, ideal, start_building, target_building)
                 build_map(ideal, true)
             end
@@ -63,7 +63,7 @@ defmodule Routing.Routecalc do
     perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil, false})
   end
   def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept} = previous) do
-    case edge_hop_processing(init_graph, :"dp#{start_building}", :start) do
+    case edge_hop_processing(init_graph, atom("dp#{start_building}"), :start) do
       {:err, message} ->
         Logger.info("Shop not reachable")
         raise message
@@ -72,15 +72,14 @@ defmodule Routing.Routecalc do
         graph = graph
         start_hops = start_hops
     end
-    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    {:ok, ideal} = Graph.shortest_path(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
     tryroute = build_map(ideal, delivery) |> Routerepo.try_route(true)
 
     # TODO use config variable for time format
-    # TODO handle if customer cannot be reached
-    {graph, end_hops} = edge_hop_processing(graph, :"dp#{target_building}", :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
+    {graph, end_hops} = edge_hop_processing(graph, atom("dp#{target_building}"), :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
 
-    {graph, start_hops, end_hops} = correct_start_target_connection(graph, :"dp#{start_building}", :"dp#{target_building}", start_hops, end_hops)
-    {:ok, ideal} = Graph.shortest_path(graph, :"dp#{start_building}", :"dp#{target_building}")
+    {graph, start_hops, end_hops} = correct_start_target_connection(graph, atom("dp#{start_building}"), atom("dp#{target_building}"), start_hops, end_hops)
+    {:ok, ideal} = Graph.shortest_path(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
     ideal = complete_route(ideal, start_hops, end_hops)
     tryroute = build_map(ideal, delivery) |> Routerepo.try_route(false)
 
@@ -116,7 +115,6 @@ defmodule Routing.Routecalc do
         end
       {_, _, _, _, _} ->
         if timediff <= old_timediff * (1+old_score/10) && score < old_score do
-          IO.puts("#{timediff} <= #{old_timediff} * #{(1+old_score/10)} && #{score} < #{old_score}")
           perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
         else
           case old_ranking do
@@ -129,7 +127,6 @@ defmodule Routing.Routecalc do
               end
             _ ->
               {to_delete, old_ranking} = Enum.split(old_ranking, 1)
-              IO.inspect(to_delete)
               init_graph = GenServer.call(:graphrepo, {:delete_nodes, Keyword.keys(to_delete), init_graph})
               perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept})
           end
@@ -148,7 +145,6 @@ defmodule Routing.Routecalc do
   def edge_hop_processing(graph, target, type, time \\ Timex.now) do
     case get_edge_hop_pairs(graph, target, type, time) do
       {:ok, pairs, unreachable_targets} ->
-        # IO.inspect(unreachable_targets)
         graph = GenServer.call(:graphrepo, {:update_edges, pairs, target, graph})
         graph = GenServer.call(:graphrepo, {:delete_edges, unreachable_targets, target, graph})
         {graph, pairs}
@@ -180,7 +176,7 @@ defmodule Routing.Routecalc do
 
   defp match([], _to, _neighbors, _predictions, _type), do: []
   defp match([h | t], to, neighbors, predictions, type) do
-    # TODO consider a different approach for cost calculation where costs do not skyrocket (see pictre in WhatsApp)
+    # TODO consider a different approach for cost calculation where costs do not skyrocket
     # NOTE differenciating here is important because end hops have taking and giving switched around
     {takefac, givefac} = case type do
       :start ->
@@ -208,7 +204,6 @@ defmodule Routing.Routecalc do
   end
   defp do_filter([], _pairs), do: {%{}, []}
   defp do_filter([key | t], pairs) do
-    # best = Map.get(pairs, key) |> Enum.min_by(fn(x) -> x[:costs] end)
     {p, tr} = do_filter(t, pairs)
     case Map.get(pairs, key) do
       [] ->
@@ -253,8 +248,8 @@ defmodule Routing.Routecalc do
   end
 
   defp complete_route_dumb(graph, route, start, target) do
-    sid = :"dp#{start}"
-    tid = :"dp#{target}" 
+    sid = atom("dp#{start}")
+    tid = atom("dp#{target}") 
     first_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
     start = graph.edges[sid]
             |> MapSet.to_list
@@ -275,7 +270,7 @@ defmodule Routing.Routecalc do
 
   def get_factors([], _start, _target), do: []
   def get_factors([prev | [h | _t] = next], start, target) do
-    hid = :"dp#{h["hop/end"]["db/id"]}"
+    hid = atom("dp#{h["hop/end"]["db/id"]}")
     cond do
       h["hop/end"]["db/id"] == target ->
         get_factors([], start, target)
@@ -304,6 +299,12 @@ defmodule Routing.Routecalc do
     from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "") |> String.to_integer
     to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "") |> String.to_integer
     [%{from: from, to: to}] ++ do_build_map(next)
+  end
+
+  def atom(name) do
+    String.to_existing_atom(name)
+  rescue
+    ArgumentError -> String.to_atom(name)
   end
 end
 

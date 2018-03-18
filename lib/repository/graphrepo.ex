@@ -150,8 +150,8 @@ defmodule Routing.Graphrepo do
 
   # TODO nil is a workaround to enable first inserting of shop and cust
   defp add_nodes(hives, from, to) do
-    graph = Graph.add_node(Graph.new, :"dp#{Map.get(to, "db/id")}", %{costs: 0, label: "Target"})
-            |> Graph.add_node(:"dp#{Map.get(from, "db/id")}", %{costs: get_heur_costs_buildings(from, to), label: "Start"})
+    graph = Graph.add_node(Graph.new, atom("dp#{Map.get(to, "db/id")}"), %{costs: 0, label: "Target"})
+            |> Graph.add_node(atom("dp#{Map.get(from, "db/id")}"), %{costs: get_heur_costs_buildings(from, to), label: "Start"})
     add_nodes(hives, from, to, graph)
   end
   defp add_nodes([], _, _, graph), do: graph
@@ -159,14 +159,14 @@ defmodule Routing.Graphrepo do
     # TODO enable for customer and shops because they are not a hive
     hive = Map.get(building, "building/hive")
     Graph.add_node(add_nodes(t, from, to, graph), 
-                    :"dp#{Map.get(building, "db/id")}",
+                    atom("dp#{Map.get(building, "db/id")}"),
                     %{costs: get_heur_costs_buildings(building, to), label: Map.get(hive, "hive/name")})
   end
 
   defp add_edges([], graph), do: graph
   defp add_edges([edge | t], graph) do
-    from = :"dp#{Map.get(Map.get(edge, "connection/start"), "db/id")}"
-    to = :"dp#{Map.get(Map.get(edge, "connection/end"), "db/id")}"
+    from = atom("dp#{Map.get(Map.get(edge, "connection/start"), "db/id")}")
+    to = atom("dp#{Map.get(Map.get(edge, "connection/end"), "db/id")}")
     costs = round(Map.get(edge, "connection/distance"))
     graph = Graph.add_edge(add_edges(t, graph), from, to, costs)
     graph
@@ -205,6 +205,12 @@ defmodule Routing.Graphrepo do
   defp do_delete_nodes(graph, []), do: graph
   defp do_delete_nodes(graph, [n | t]) do
     do_delete_nodes(graph, t) |> Graph.delete_node(n)
+  end
+
+  def atom(name) do
+    String.to_existing_atom(name)
+  rescue
+    ArgumentError -> String.to_atom(name)
   end
 end
 
