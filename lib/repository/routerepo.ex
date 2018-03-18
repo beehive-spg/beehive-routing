@@ -95,6 +95,8 @@ defmodule Routing.Routerepo do
     case HTTPotion.post(@url <> "/api/departure", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => _, :headers => _, :status_code => 204} ->	
         Logger.debug("Notifying about departure succeeded")
+      %{:body => b, :headers => _, :status_code => 400} ->
+        Logger.error("Notifying departure information #{data} on url #{@url} with error message #{b}")
       %{:body => b, :headers => _, :status_code => s} ->
         {:err, "Error #{s} occured trying to notify departure information for #{data} on url #{@url} with error message #{b}"}
     end
@@ -105,6 +107,8 @@ defmodule Routing.Routerepo do
     case HTTPotion.post(@url <> "/api/arrival", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => _, :headers => _, :status_code => 204} ->	
         Logger.debug("Notifying about arrival succeeded")
+      %{:body => b, :headers => _, :status_code => 400} ->
+        Logger.error("Notifying arrival information #{data} on url #{@url} with error message #{b}")
       %{:body => b, :headers => _, :status_code => s} ->
         {:err, "Error #{s} occured trying to notify arrival information for #{data} on url #{@url} with error message #{b}"}
     end
