@@ -10,20 +10,42 @@ defmodule Routing.Routerepo do
 
   @url Application.fetch_env!(:routing, :database_url)
 
-  def insert_route(route) do
+  def insert_route(route), do: do_try(&do_insert_route/1, {route})
+  def insert_order(shop, customer, routeid, generated), do: do_try(&do_insert_order/1, {shop, customer, routeid, generated})
+  def is_reachable(buil1, buil2), do: do_try(&do_is_reachable/1, {buil1, buil2})
+  def try_route(route, format), do: do_try(&do_try_route/1, {route, format})
+  def notify_departure(hop), do: do_try(&do_notify_departure/1, {hop})
+  def notify_arrival(hop), do: do_try(&do_notify_arrival/1, {hop})
+
+  defp do_try(fun, data, tries) when tries == 4 do
+    Logger.error("Failed getting a successful result from calling #{Kernel.inspect(fun)} with data #{Kernel.inspect(data)} after #{tries - 1} tries.")
+  end
+  defp do_try(fun, data, tries \\ 1) do
+    case fun.(data) do
+      {:ok, result} ->
+        result
+      :ok ->
+        :ok
+      {:err, message} ->
+        Logger.warn("#{message}. Try: #{tries}")
+        do_try(fun, data, tries+1)
+    end
+  end
+
+  defp do_insert_route({route}) do
     data = transform_to_db_format(route) |> Poison.encode!
     case HTTPotion.post(@url <> "/routes", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Route inserted successfully")
         # Transforms to fromat that can instantly be inserted into the redis db
         redis = Poison.decode!(~s/#{b}/) |> transform_to_redis_format
+        {:ok, redis}
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}. Now retrying ...")
-        insert_route(route)
+        {:err, "Error #{s} occured trying to insert route #{data} on url #{@url} with error message #{b}"}
     end
   end
 
-  def insert_order(shop, customer, routeid, generated) do
+  defp do_insert_order({shop, customer, routeid, generated}) do
     data = %{
       "shopid"      => shop |> String.to_integer,
       "customerid"  => customer |> String.to_integer,
@@ -33,26 +55,25 @@ defmodule Routing.Routerepo do
     result = case HTTPotion.post(@url <> "/orders", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 201} ->	
         Logger.debug("Inserting order succeeded with code 200")
-        Poison.decode!(~s/#{b}/)
+        {:ok, Poison.decode!(~s/#{b}/)}
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to insert order #{data} on url #{@url} with error message #{b}. Now retrying ...")
-        insert_order(shop, customer, routeid, generated)
+        {:err, "Error #{s} occured trying to insert order #{data} on url #{@url} with error message #{b}"}
     end
     result
   end
 
-  def is_reachable(building1, building2) do
+  defp do_is_reachable({building1, building2}) do
     result = case HTTPotion.get(@url <> "/api/reachable/#{building1}/#{building2}") do
       %{:body => b, :headers => _, :status_code => 200} ->	
         Logger.debug("Is reachable from #{building1} to #{building2} succeeded with code 200")
-        Poison.decode!(~s/#{b}/)
+        {:ok, Poison.decode!(~s/#{b}/)}
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to check reachable for #{building1} and #{building2} on url #{@url} with error code #{s} and message #{b}")
+        {:err, "Error #{s} occured trying to check reachable for #{building1} and #{building2} on url #{@url} with error code #{s} and message #{b}"}
     end
     result
   end
 
-  def try_route(route, format \\ false) do
+  defp do_try_route({route, format}) do
     data = transform_to_db_format(route) |> Poison.encode!
     result = case HTTPotion.post(@url <> "/api/tryroute", [body: data, headers: ["Content-Type": "application/json"]]) do
       %{:body => b, :headers => _, :status_code => 200} ->	
@@ -62,31 +83,30 @@ defmodule Routing.Routerepo do
         if format do
           map = transform_to_redis_format(map)
         end
-        map
+        {:ok, map}
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to fetch predicted route information for #{data} on url #{@url} with error message #{b}. Now retrying ...")
-        try_route(route)
+        {:err, "Error #{s} occured trying to fetch predicted route information for #{data} on url #{@url} with error message #{b}"}
     end
     result
   end
 
-  def notify_departure(hop) do
+  defp do_notify_departure({hop}) do
     data = Poison.encode!(hop)
     case HTTPotion.post(@url <> "/api/departure", [body: data, headers: ["Content-Type": "application/json"]]) do
-      %{:body => b, :headers => _, :status_code => 204} ->	
+      %{:body => _, :headers => _, :status_code => 204} ->	
         Logger.debug("Notifying about departure succeeded")
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to notify departure information for #{data} on url #{@url} with error message #{b}")
+        {:err, "Error #{s} occured trying to notify departure information for #{data} on url #{@url} with error message #{b}"}
     end
   end
 
-  def notify_arrival(hop) do
+  defp do_notify_arrival({hop}) do
     data = Poison.encode!(hop)
     case HTTPotion.post(@url <> "/api/arrival", [body: data, headers: ["Content-Type": "application/json"]]) do
-      %{:body => b, :headers => _, :status_code => 204} ->	
+      %{:body => _, :headers => _, :status_code => 204} ->	
         Logger.debug("Notifying about arrival succeeded")
       %{:body => b, :headers => _, :status_code => s} ->
-        Logger.warn("Error #{s} occured trying to notify arrival information for #{data} on url #{@url} with error message #{b}")
+        {:err, "Error #{s} occured trying to notify arrival information for #{data} on url #{@url} with error message #{b}"}
     end
   end
 

@@ -43,7 +43,10 @@ defmodule Routing.Droneportrepo do
   def pass_packet_costs(data, building, after_distance) do
     charge_loss = after_distance / Dronerepo.get_dronerange(0)
     pred = get_predicted_cost_factor(data, building, :take)
+    # IO.puts("Cost calculation for #{building}: #{charge_loss} for #{pred}")
     cond do
+      pred > 19 ->
+        -20
       charge_loss <= 0.25 ->
         17 - pred 
       charge_loss <= 0.5 ->

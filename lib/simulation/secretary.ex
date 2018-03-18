@@ -44,10 +44,10 @@ defmodule Routing.Secretary do
         if b == "" do
           Logger.info("!! ERROR !! Arrival hop #{:hop_id} does not exist")
         else
-          Logger.info("Success: Arrival hop to be executed exists")
+          Logger.debug("Success: Arrival hop to be executed exists")
         end
       _ ->
-        Logger.error("Could not check for hop")
+        Logger.warn("Could not check for hop")
     end
 
     # TODO publish notification to frontend only of database confirms event (when Emin fixes the bug)
@@ -74,10 +74,10 @@ defmodule Routing.Secretary do
         if b == "" do
           Logger.info("!! ERROR !! Departure hop #{:hop_id} does not exist")
         else
-          Logger.info("Success: Departure hop to be executed exists")
+          Logger.debug("Success: Departure hop to be executed exists")
         end
       _ ->
-        Logger.error("Could not check for hop")
+        Logger.warn("Could not check for hop")
     end
 
     Routing.Eventcomm.publish(json)
