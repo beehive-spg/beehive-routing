@@ -121,7 +121,7 @@ defmodule Routing.Routecalc do
             [] ->
               cond do
                 accept ->
-                  old_route
+                  old_route |> build_map(delivery)
                 !accept ->
                   raise "No efficient route was found"
               end
