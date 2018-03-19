@@ -118,7 +118,7 @@ defmodule Routing.Routecalc do
           perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
         else
           case old_ranking do
-            [] ->
+            [_ | []] ->
               cond do
                 accept ->
                   old_route |> build_map(delivery)
@@ -127,13 +127,13 @@ defmodule Routing.Routecalc do
               end
             _ ->
               {to_delete, old_ranking} = Enum.split(old_ranking, 1)
-              init_graph = GenServer.call(:graphrepo, {:delete_nodes, Keyword.keys(to_delete), init_graph})
+              init_graph = GenServer.call(:graphrepo, {:delete_edges, Keyword.keys(to_delete), Enum.at(old_ranking, 0) |> elem(0), init_graph})
               perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept})
           end
         end
     end
   rescue
-    e in MatchError ->
+    MatchError ->
       if old_route != nil && old_accept do
         old_route |> build_map(delivery)
       else
@@ -287,10 +287,9 @@ defmodule Routing.Routecalc do
     end
   end
 
-  # TODO make private
   # Looks like this in the end:
   # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
-  def build_map(route, delivery) do
+  defp build_map(route, delivery) do
     start_time = Timex.shift(Timex.now, [hours: 1])
     %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
   end
