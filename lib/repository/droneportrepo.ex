@@ -45,7 +45,7 @@ defmodule Routing.Droneportrepo do
     pred = get_predicted_cost_factor(data, building, :take)
     # IO.puts("Cost calculation for #{building}: #{charge_loss} for #{pred}")
     cond do
-      pred > 19 ->
+      pred > 20 ->
         -20
       charge_loss <= 0.25 ->
         17 - pred 
