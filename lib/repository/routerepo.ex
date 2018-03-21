@@ -14,21 +14,21 @@ defmodule Routing.Routerepo do
   def insert_order(shop, customer, routeid, generated), do: do_try(&do_insert_order/1, {shop, customer, routeid, generated})
   def is_reachable(buil1, buil2), do: do_try(&do_is_reachable/1, {buil1, buil2})
   def try_route(route, format), do: do_try(&do_try_route/1, {route, format})
-  def notify_departure(hop), do: do_try(&do_notify_departure/1, {hop})
-  def notify_arrival(hop), do: do_try(&do_notify_arrival/1, {hop})
+  def notify_departure(hop), do: do_try(&do_notify_departure/1, {hop}, 1)
+  def notify_arrival(hop), do: do_try(&do_notify_arrival/1, {hop}, 1)
 
-  defp do_try(fun, data, tries) when tries == 4 do
-    Logger.error("Failed getting a successful result from calling #{Kernel.inspect(fun)} with data #{Kernel.inspect(data)} after #{tries - 1} tries.")
+  defp do_try(fun, data, max, tries) when tries == max do
+    Logger.error("Failed getting a successful result from calling #{Kernel.inspect(fun)} with data #{Kernel.inspect(data)} after #{tries} tries.")
   end
-  defp do_try(fun, data, tries \\ 1) do
+  defp do_try(fun, data, max \\ 10, tries \\ 0) do
     case fun.(data) do
       {:ok, result} ->
         result
       :ok ->
         :ok
       {:err, message} ->
-        Logger.warn("#{message}. Try: #{tries}")
-        do_try(fun, data, tries+1)
+        Logger.warn("#{message}. Try: #{tries+1} of #{max}")
+        do_try(fun, data, max, tries+1)
     end
   end
 
