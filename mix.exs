@@ -4,8 +4,8 @@ defmodule Routing.Mixfile do
   def project do
     [
       app: :routing,
-      version: "0.1.0",
-      elixir: "~> 1.5",
+      version: "0.2.0",
+      elixir: "~> 1.6",
       start_permanent: Mix.env == :prod,
       deps: deps()
     ]
@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   def application do
     [
       mod: {Routing, []},
-      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum],
+      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum, :httpotion, :distance],
     ]
   end
 
@@ -25,7 +25,7 @@ defmodule Routing.Mixfile do
       {:distillery, "~> 1.5", runtime: false},
 
       # Graph Management
-      {:graphbrewer, "~> 0.1.2"},
+      {:graphbrewer, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
@@ -37,8 +37,15 @@ defmodule Routing.Mixfile do
       {:redix, git: "https://github.com/whatyouhide/redix.git"},
 
       # Job Scheduling
-      {:quantum, ">= 2.1.0"},
-      {:timex, "~> 3.1"}
+      {:quantum, ">= 2.2.3"},
+      {:timex, "~> 3.1.13"},
+
+      # HTTP requests
+      # {:httpotion, "~> 3.0.2"},
+      {:httpotion, git: "https://github.com/myfreeweb/httpotion.git", branch: "master"},
+
+      # Distance Calculation
+      {:distance, "~> 0.2.1"}
     ]
   end
 end

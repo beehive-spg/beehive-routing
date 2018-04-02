@@ -1,16 +1,15 @@
-defmodule Routing.Eventcomm do
+defmodule Routing.Errorcomm do
   use GenServer
   use AMQP
   require Logger
 
   def start_link(_args), do: start_link()
-  def start_link, do: GenServer.start(__MODULE__, [], name: :eventcomm)
+  def start_link, do: GenServer.start(__MODULE__, [], name: :errorcomm)
 
   def init(_args), do: connect_rabbitmq()
 
-  @exchange     "eventex"
-  @front_queue  "hop_event"
-  @dist_queue   "dist_event"
+  @exchange "errorex"
+  @queue    "error_result"
 
   def connect_rabbitmq do
     case Connection.open("#{Application.get_env(:routing, :cloudamqp_url)}") do
@@ -19,7 +18,7 @@ defmodule Routing.Eventcomm do
         {:ok, chan} = Channel.open(conn)
         setup_queue(chan)
         Basic.qos(chan, prefetch_count: 100)
-        Logger.info("Eventcomm registered for exchange #{@exchange} and queue #{@front_queue} and #{@dist_queue}")
+        Logger.info("Errorcomm registered for exchange #{@exchange} and queue #{@queue}")
         {:ok, chan}
 
       {status, message} ->
@@ -30,27 +29,25 @@ defmodule Routing.Eventcomm do
   end
 
   def setup_queue(chan) do
-    Queue.declare(chan, @front_queue, durable: true)
-    Queue.declare(chan, @dist_queue, durable: true)
-    Exchange.fanout(chan, @exchange, durable: true)
-    Queue.bind(chan, @front_queue, @exchange)
-    Queue.bind(chan, @dist_queue, @exchange)
+    Queue.declare(chan, @queue, durable: true)
+    Exchange.direct(chan, @exchange, durable: true)
+    Queue.bind(chan, @queue, @exchange)
   end
 
   # Handle down notification - try to reconnect
   def handle_info({:DOWN, _, :process, _pid, _reason}, _) do
-    Logger.info("Connection canceled unexpectedly for Eventcomm")
+    Logger.info("Connection canceled unexpectedly for Errorcomm")
     {:ok, chan} = connect_rabbitmq()
     {:noreply, chan}
   end
 
   def publish(data) do
-    case GenServer.whereis(:eventcomm) do
+    case GenServer.whereis(:errorcomm) do
       nil ->
         start_link()
         publish(data)
       _ ->
-        GenServer.cast(:eventcomm, {:send, data})
+        GenServer.cast(:errorcomm, {:send, data})
     end
   end
 

@@ -1,4 +1,4 @@
-defmodule Routing.Neworder do
+defmodule Routing.Distribution do
   use GenServer
   use AMQP
   require Logger
@@ -11,9 +11,9 @@ defmodule Routing.Neworder do
   def init(_args), do: connect_rabbitmq()
 
   @url      Application.fetch_env!(:routing, :cloudamqp_url)
-  @exchange "newx"
-  @queue    "new_orders"
-
+  @exchange "distributionex"
+  @queue    "distribution"
+  
   def connect_rabbitmq do
     case Connection.open(@url) do
       {:ok, conn} ->
@@ -39,13 +39,13 @@ defmodule Routing.Neworder do
 
   # Handling confirmation of registering the consumer
   def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, chan) do
-    Logger.info("Neworder #{consumer_tag} registered for exchange #{@exchange} and queue #{@queue}")
+    Logger.info("Distribution #{consumer_tag} registered for exchange #{@exchange} and queue #{@queue}")
     {:noreply, chan}
   end
 
   # Handling unexpected cancelling
   def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, chan) do
-    Logger.info("Connection canceled unexpectedly for Neworder #{consumer_tag}")
+    Logger.info("Connection canceled unexpectedly for consumer #{consumer_tag}")
     {:stop, :normal, chan}
   end
 
@@ -57,14 +57,14 @@ defmodule Routing.Neworder do
 
   # Handling received message
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
-    Logger.debug("Handling incoming message #{payload}")
+    Logger.debug("Handling incoming message")
     consume(payload)
     Basic.ack(chan, tag)
     {:noreply, chan}
   end
 
   def consume(payload) do
-    case Routehandler.calc_delivery(payload) do
+    case Routehandler.calc_distribution(payload) do
       {:err, message} ->
         Logger.warn(message)
         Errorcomm.publish(message)

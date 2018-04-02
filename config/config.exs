@@ -1,7 +1,10 @@
 use Mix.Config
 
 config :routing,
-  cloudamqp_url: System.get_env("CLOUDAMQP_URL")
+ cloudamqp_url: "amqp://guest:guest@rabbitmq:5672",
+ # cloudamqp_url: "amqp://guest:guest@localhost:5672",
+ database_url: "http://beehive-database:3000"
+ # database_url: "localhost:4321"
 
 config :logger,
 	level: :debug, #for runtime
@@ -10,8 +13,8 @@ config :logger,
 	backends: [:console]
 
 config :redix,
-    # host: "localhost",
     host: "redis",
+    # host: "localhost",
     port: 6379
 
 config :timex,
