@@ -37,7 +37,7 @@ defmodule Routing.Droneportrepo do
   end
 
   def get_predicted_cost_factor(data, building, :give) do
-    round(1 - get_predicted_cost_factor(data, building, :take) / 20)
+    round(1 - (get_predicted_cost_factor(data, building, :take) - 1) / 20)
   end
 
   def pass_packet_costs(data, building, after_distance) do
@@ -48,7 +48,7 @@ defmodule Routing.Droneportrepo do
       pred > 20 ->
         -20
       charge_loss <= 0.25 ->
-        17 - pred 
+        19 - pred 
       charge_loss <= 0.5 ->
         14 - pred 
       charge_loss <= 0.75 ->

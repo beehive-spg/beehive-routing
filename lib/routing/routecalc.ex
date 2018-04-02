@@ -114,6 +114,7 @@ defmodule Routing.Routecalc do
             raise "Route calculation reached unknown state"
         end
       {_, _, _, _, _} ->
+        # TODO or if old route not accepted and new route accepted
         if timediff <= old_timediff * (1+old_score/10) && score < old_score do
           perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
         else
@@ -127,6 +128,7 @@ defmodule Routing.Routecalc do
               end
             _ ->
               {to_delete, old_ranking} = Enum.split(old_ranking, 1)
+              # TODO change the deletion from Enum.at(... to the previous item of the to_delete item in the route array (the problem is that the ranking array is sorted
               init_graph = GenServer.call(:graphrepo, {:delete_edges, Keyword.keys(to_delete), Enum.at(old_ranking, 0) |> elem(0), init_graph})
               perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept})
           end
@@ -153,6 +155,8 @@ defmodule Routing.Routecalc do
     end
   end
 
+  # TODO filter out options that have a -20 hivecosts and consider drones with less charge
+  # Basically update to the new hivecost system
   def get_edge_hop_pairs(graph, id, type, time) do
     case graph.edges |> Map.get(id) do
       nil ->
@@ -178,6 +182,8 @@ defmodule Routing.Routecalc do
   defp match([h | t], to, neighbors, predictions, type) do
     # TODO consider a different approach for cost calculation where costs do not skyrocket
     # NOTE differenciating here is important because end hops have taking and giving switched around
+    # TODO combine this with heuristic costs
+    # TODO dont use give but rather pass_packet factor (as the drone port that is given the drone will also lose one)
     {takefac, givefac} = case type do
       :start ->
         {Droneportrepo.get_predicted_cost_factor(predictions, h, :take),
