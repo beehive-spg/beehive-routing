@@ -11,6 +11,7 @@ defmodule Routing.AMQP_Supervisor do
   def init(_args) do
     Logger.debug("Starting AMQP workers with url #{@url}")
     pool = [
+      # Consumer
       Supervisor.child_spec({Routing.Consumer,
                             [{@url, "newx", "new_orders"}, &consume_new_order/1]},
                             id: {Routing.Consumer, "Neworders"}),
@@ -19,7 +20,10 @@ defmodule Routing.AMQP_Supervisor do
                             id: {Routing.Consumer, "Generated"}),
       Supervisor.child_spec({Routing.Consumer,
                             [{@url, "distributionex", "distribution"}, &consume_distribution/1]},
-                            id: {Routing.Consumer, "Distribution"})
+                            id: {Routing.Consumer, "Distribution"}),
+      # Producer
+      Routing.Eventcomm.child_spec([]),
+      Routing.Errorcomm.child_spec([])
     ]
    Supervisor.init(pool, [strategy: :one_for_one, name: Routing.AMQP_Supervisor])
   end

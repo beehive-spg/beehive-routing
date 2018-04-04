@@ -11,7 +11,7 @@ defmodule Routing.Consumer do
       id: __MODULE__,
       start: {__MODULE__, :start_link, args},
       type: :worker,
-      shutdown: 2_000,
+      shutdown: 2_500,
       restart: :permanent
     }
   end
@@ -30,8 +30,8 @@ defmodule Routing.Consumer do
         {:ok, _consumer_tag} = Basic.consume(chan, queue)
         {:ok, {chan, function, opts}}
 
-      {_status, _message} ->
-        Logger.warn("Cannot connect to RabbitMQ with url #{url}")
+      {status, message} ->
+        Logger.warn("Unknwon connection state: #{status}, #{message} for url #{url}")
         :timer.sleep(1000)
         connect(opts, function)
     end
