@@ -59,6 +59,7 @@ defmodule Routing.Neworder do
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: _}}, chan) do
     Logger.debug("Handling incoming message #{payload}")
     consume(payload)
+    IO.inspect(chan)
     Basic.ack(chan, tag)
     {:noreply, chan}
   end
