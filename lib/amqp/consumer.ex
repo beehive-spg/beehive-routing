@@ -10,7 +10,9 @@ defmodule Routing.Consumer do
     %{
       id: __MODULE__,
       start: {__MODULE__, :start_link, args},
-      type: :worker
+      type: :worker,
+      shutdown: 2_000,
+      restart: :permanent
     }
   end
 
