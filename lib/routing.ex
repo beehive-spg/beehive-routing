@@ -7,12 +7,7 @@ defmodule Routing do
 
     children = [
       Routing.Redixcontrol.child_spec([]),
-      Routing.Neworder.child_spec([]),
-      Routing.Eventcomm.child_spec([]),
-      Routing.Errorcomm.child_spec([]),
-      Routing.Dumborder.child_spec([]),
-      Routing.Generated.child_spec([]),
-      Routing.Distribution.child_spec([]),
+      Routing.RabbitMQ.child_spec([]),
       Routing.Secretary.child_spec([])
     ]
 

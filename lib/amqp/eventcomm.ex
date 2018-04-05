@@ -8,12 +8,13 @@ defmodule Routing.Eventcomm do
 
   def init(_args), do: connect_rabbitmq()
 
+  @url          Application.get_env(:routing, :amqp_url)
   @exchange     "eventex"
   @front_queue  "hop_event"
   @dist_queue   "dist_event"
 
   def connect_rabbitmq do
-    case Connection.open("#{Application.get_env(:routing, :cloudamqp_url)}") do
+    case Connection.open(@url) do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
@@ -23,7 +24,7 @@ defmodule Routing.Eventcomm do
         {:ok, chan}
 
       {status, message} ->
-        Logger.warn("Unknwon connection state: #{status}, #{message}")
+        Logger.warn("Unknwon connection state: #{status}, #{message} for url #{@url}")
         :timer.sleep(1000)
         connect_rabbitmq()
     end
