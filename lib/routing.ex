@@ -7,7 +7,7 @@ defmodule Routing do
 
     children = [
       Routing.Redixcontrol.child_spec([]),
-      Routing.AMQP_Supervisor.child_spec([]),
+      Routing.RabbitMQ.child_spec([]),
       Routing.Secretary.child_spec([])
     ]
 

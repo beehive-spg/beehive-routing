@@ -5,11 +5,12 @@ defmodule Routing.Consumer do
 
   alias Routing.{Routehandler, Errorcomm}
 
-  def child_spec([{url, exchange, queue}, function] = args)
-  when is_bitstring(url) and is_bitstring(exchange) and is_bitstring(queue) and is_function(function) do
+  def child_spec([[url, exchange, queue], function]), do: child_spec([[url, exchange, queue, :direct], function])
+  def child_spec([[url, exchange, queue, type], function] = opts)
+  when is_bitstring(url) and is_bitstring(exchange) and is_bitstring(queue) and is_atom(type) and is_function(function) do
     %{
       id: __MODULE__,
-      start: {__MODULE__, :start_link, args},
+      start: {__MODULE__, :start_link, opts},
       type: :worker,
       shutdown: 2_500,
       restart: :transient
@@ -18,14 +19,14 @@ defmodule Routing.Consumer do
 
   def start_link(opts, spec), do: GenServer.start_link(__MODULE__, [opts, spec], [])
 
-  def init([{url, exchange, queue} = opts, function]), do: connect(opts, function)
+  def init([[url, exchange, queue, type] = opts, function]), do: connect(opts, function)
 
-  def connect({url, exchange, queue} = opts, function) do
+  def connect([url, exchange, queue, type] = opts, function) do
     case Connection.open(url) do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:ok, chan} = Channel.open(conn)
-        setup_queue(chan, queue, exchange)
+        setup_queue(chan, queue, exchange, type)
         Basic.qos(chan, prefetch_count: 100)
         {:ok, _consumer_tag} = Basic.consume(chan, queue)
         {:ok, {chan, function, opts}}
@@ -37,9 +38,14 @@ defmodule Routing.Consumer do
     end
   end
 
-  def setup_queue(chan, queue, exchange) do
+  def setup_queue(chan, queue, exchange, type) do
     Queue.declare(chan, queue, durable: true)
-    Exchange.direct(chan, exchange, durable: true) # Declaring the exchange
+    case type do
+      :direct ->
+        Exchange.direct(chan, exchange, durable: true) # Declaring the exchange
+      :fanout ->
+        Exchange.fanout(chan, exchange, durable: true) # Declaring the exchange
+    end
     Queue.bind(chan, queue, exchange) # Binding the two above
   end
 
