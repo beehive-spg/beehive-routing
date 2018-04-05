@@ -12,7 +12,7 @@ defmodule Routing.Consumer do
       start: {__MODULE__, :start_link, args},
       type: :worker,
       shutdown: 2_500,
-      restart: :permanent
+      restart: :transient
     }
   end
 
@@ -52,10 +52,10 @@ defmodule Routing.Consumer do
   # Handling unexpected cancelling
   def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, {chan, function, args}) do
     Logger.warn("Consumer for #{inspect(function)} cancelled unexpectedly")
-    {:stop, :normal, {chan, function, args}} # let it be restarted in the supervisor
+    {:stop, :cancelled_connection, {chan, function, args}}
   end
 
-  # Handling down notification - try to reconnect
+  # Handling down notification
   def handle_info({:DOWN, _, :process, _pid, _reason}, {_, function, args}) do
     {:ok, {chan, function, args}} = connect(args, function)
     {:noreply, {chan, function, args}}
