@@ -2,7 +2,7 @@ defmodule Routing.RabbitMQ do
   use Supervisor
   require Logger
 
-  alias Routing.{Errorcomm, Routehandler}
+  alias Routing.{Errorcomm, Eventcomm, Routehandler}
 
   @url Application.fetch_env!(:routing, :amqp_url)
 
