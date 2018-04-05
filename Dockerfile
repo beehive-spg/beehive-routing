@@ -23,7 +23,7 @@ RUN export MIX_ENV=prod && \
 
 # Export executable
 RUN APP_NAME="routing" && \
-    RELEASE_DIR=`ls -d _build/prod/rel/$APP_NAME/releases/0.1.0/` && \
+    RELEASE_DIR=`ls -d _build/prod/rel/$APP_NAME/releases/0.*/` && \
     mkdir /export && \
     tar -xf "$RELEASE_DIR/$APP_NAME.tar.gz" -C /export
 
