@@ -25,7 +25,7 @@ defmodule Routing.Mixfile do
       {:distillery, "~> 1.5", runtime: false},
 
       # Graph Management
-      {:graphbrewer, git: "https://github.com/Langhaarzombie/graph-brewer.git", branch: "develop"},
+      {:graphbrewer, "~> 0.1.7"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
@@ -41,8 +41,8 @@ defmodule Routing.Mixfile do
       {:timex, "~> 3.1.13"},
 
       # HTTP requests
-      # {:httpotion, "~> 3.0.2"},
       {:httpotion, git: "https://github.com/myfreeweb/httpotion.git", branch: "master"},
+      {:httpoison, "1.1.0"},
 
       # Distance Calculation
       {:distance, "~> 0.2.1"}
