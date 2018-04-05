@@ -1,77 +1,97 @@
 # Beehive-Routing
 The routing engine of project Beehive.
 
+## Installation
 
+**Note:** Only continue if you are sure that you want to run the routing engine separately.
+If you want to start the entire application consider [these](https://github.com/beehive-spg/beehive) instructions as they include all system components.
 
-## Before Starting
-Make sure that there is a redis server available.
+The routing engine depends on the database used in the Beehive project.
+For details on how to build the docker image of the database simply look at the [beehive-database repository](https://github.com/beehive-spg/beehive-database).
 
-### Create Custom Redis Server
-In order to quick test this module just create a Docker container:
-```
-docker run --name beehive-redis -it -p 6379:6379 redis
-```
-Note: This creates a permanent copy of the container with the name _beehive-redis_ on your machine. In order to remove it again use:
-```
-docker rm beehive-redis
-```
-
-### Use Existing Redis Server
-If there is already a redis server running (that is not operating on localhost:6379) you just need to edit the settings in *config/config.exs*.
-
-## Facts To Keep In Mind
-
-### Adding & Removing Arrivals
-
-Details of arrivals are stored as hashes in Redis. They conform the following structure:
+After having successfully built the docker image for the database you can continue and simply startup the routing engine using:
 
 ```
-arr_42, time: "2017-10-10 12:20:00", drone: "512", location: "15", is_delivery: "true"
+docker-compose up
 ```
 
-The id *arr_42* changes based on the next number assigned. Every arrival as well as departure needs to be unique therefore the id is always incremented by one.
+This will automatically download all images required to start and work with the routing engine.
 
-The time is stored in *ISO:Extended* and is converted for calculations internally.
+For interacting with the application simply attach to the container.
+You are automatically provided Elixir's interactive shell.
+From there you have access to the entire application.
 
-The drone id is based on the drone that is assigned that action.
+## Building your own Docker image
 
-The location id is based on the location where the action is happening.
-
-The field *is_delivery* indicated whether the action that is being performed is a delivery or a redistribution. This is important because depending on that different different parts of the system need to be notified.
-
-### Adding & Removing Departures
-
-The same what is true for arrivals also applies for departures except that their ids start with *dep_* instead of arr_.
-
-However departures have an extra field that indicates the arrival they are corresponding to (a drone cannot just leave without ever landing). Therefore, the structure of a departure looks like so:
+If you have made changes yourself and try them out, simply build the container from source:
 
 ```
-dep_41, time: "2017-10-10 12:11:00", drone: "512", location: "16", is_delivery: "true", arrival: "arr_42"
+docker build -t langhaarzombie/beehive-routing
 ```
 
-### Defining IDs
+The tag is important as it is used a identifier by the docker-compose file.
+If you want to change the tag you need to adapt the docker-compose.yml accordingly.
 
-The next id to be taken for each arrival and departure is given by the fields *arr_next_id* and *dep_next_id*. Depending on their value they can be resetted after some time by logging into the system.
+## Interacting with the Routing Engine
 
-### Storing The Next Job To Be Done
+### RabbitMQ
 
-Whenever an arrival or departure is added the list of currently active jobs is refreshed. The very next job to be done is always on the very left (because it is easy to use with [head | tail]). The list in which the ids are stored is named *active_jobs*.
+#### Connect to RabbitMQ
 
-### Adding Routes
+The RabbitMQ container exposes ports 5672 and 15672.
+The former one being used as the amqp endpoint and the latter for the web interface.
+In order to connect simply open `localhost:15672` in your browser.
 
-Routes are a combination of departures and arrivals. Each pair of departure and arrival is called a hop which is performed by one drone and has a location as a start as well as end point. Locations do not have to be hives. If we for example think of dropping the packet at customers, they might not have a hive.
+#### Working with RabbitMQ
 
-Routes in particular are not stored in the Redis DB. Only the events.
+Queues of relevance are *new_orders* and *distribution*.
+Both of them accept JSONs as message input.
 
-A route when processed in the system conforms the follwoing structure:
+JSON for *new_orders*:
 
 ```
-route = %{:is_delivery => true/false, :route => [%{:from => "16", to => "15", dep_time => "2017-10-10 12:11:00", arr_time => "2017-10-10 12:20:00", drone => "512"}, ...]}
+{"from": "<shop_id>", "to": "<customer_id>"}
 ```
 
-### Time Based Job Execution
+JSON for *distribution*:
+```
+{"from": "<building_id_hive>", "to": "<building_id_hive>"}
+```
 
-The system uses [Quantum](https://github.com/c-rack/quantum-elixir) in order to simulate time. Every second the Secretary looks for the next job in the *active_jobs* list. Depending on the type of job different commands are executed.
+**Note:** When queueing a message for distribution it is required that the buildings are reachable.
+In order to make sure that they are call `/api/reachable/{building1}/{building2}` using the database's web interface.
+
+### Redis
+
+#### Connect to Redis
+
+It is not advised to interfere with Redis' processes,
+but if you really want to have a look at it you can connect using the [redis-cli](https://redis.io/download) and the url `localhost:6379`.
+
+#### Working with Redis
+
+The most important instances stored in the redis database are the `active_jobs` list and each individual `arrival` and `departure`.
+In order to retrieve active ids simply run `lrange active_jobs 0 -1`.
+This will return all valid job ids that hold relevant data.
+
+For getting details about an individual job (`arrival` or `departure`) simply take one of the ids retrieved above and run `hgetall <id>`.
+This will give you details about the corresponding route and hop as well as the time the event is happening
+(`departure` instances also include a reference to their corresponding `arrival` event).
+
+In case ongoing routes should be deleted and instantly aborted, you can run `flushall`.
+This will reset the Redis database.
+Use this with caution.
+
+### Database
+
+#### Connect to Database
+
+The database offers a great web interface to call certain routes and generally interact with the simulation.
+By opening the url `localhost:4321` you can see the entire documentation and all routes that are available to you.
+
+**Note:** When starting the routing engine as a single instance, you are required to add drones to each drone port or else no routes are possible to be processed.
+This is done calling the REST route `/api/givedrones/{amount}` of the database.
+See the web interface for details.
 
 ## License
 Beehive-routing-buffer is released under the Apache License 2.0. See the license file _LICENSE_ for further information.
