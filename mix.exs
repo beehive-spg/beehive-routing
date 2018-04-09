@@ -14,7 +14,7 @@ defmodule Routing.Mixfile do
   def application do
     [
       mod: {Routing, []},
-      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum, :httpotion, :distance],
+      applications: [:logger, :redix, :timex, :amqp, :conform, :crontab, :gen_stage, :graphbrewer, :poison, :quantum, :httpotion, :httpoison, :distance],
     ]
   end
 
@@ -25,7 +25,7 @@ defmodule Routing.Mixfile do
       {:distillery, "~> 1.5", runtime: false},
 
       # Graph Management
-      {:graphbrewer, "~> 0.1.7"},
+      {:graphbrewer, "~> 0.1.8"},
 
       # RabbitMQ / CloudAMQP
       {:amqp, "~> 1.0.0-pre.2"},
