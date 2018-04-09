@@ -63,60 +63,30 @@ defmodule Routing.Routecalc do
     perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil, false})
   end
   def perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept} = previous) do
-    case edge_hop_processing(init_graph, atom("dp#{start_building}"), :start) do
-      {:err, message} ->
-        Logger.info("Shop not reachable")
-        raise message
-      {graph, start_hops} ->
-        Logger.debug("Shop reachability confirmed")
-        graph = graph
-        start_hops = start_hops
-    end
-    {:ok, ideal} = Graph.shortest_path(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
-    tryroute = build_map(ideal, delivery) |> Routerepo.try_route(true)
+    {graph, start_hops} = edge_hop_processing(init_graph, atom("dp#{start_building}"), :start)
+    {_, tryroute} = get_route(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
 
     # TODO use config variable for time format
     {graph, end_hops} = edge_hop_processing(graph, atom("dp#{target_building}"), :end, Timex.parse!(Enum.at(tryroute, -1)[:arr_time], "{ISO:Extended}"))
-
     {graph, start_hops, end_hops} = correct_start_target_connection(graph, atom("dp#{start_building}"), atom("dp#{target_building}"), start_hops, end_hops)
-    {:ok, ideal} = Graph.shortest_path(graph, atom("dp#{start_building}"), atom("dp#{target_building}"))
-    ideal = complete_route(ideal, start_hops, end_hops)
-    tryroute = build_map(ideal, delivery) |> Routerepo.try_route(false)
+    {route, tryroute} = get_route(graph, atom("dp#{start_building}"), atom("dp#{target_building}"), start_hops, end_hops)
 
-    ranking = get_factors(tryroute["hop/_route"], start_building, target_building) |> Enum.sort_by(&(elem(&1, 1)))
-    timediff = Enum.at(tryroute["hop/_route"], -1)["hop/endtime"] - Enum.at(tryroute["hop/_route"], 0)["hop/starttime"]
-    score = Enum.count(ranking, fn(x) -> elem(x, 1) < 0 end) + 1
-    accept = Enum.count(ranking, fn(x) -> elem(x, 1) == -20 end) == 0
-
-    # IO.puts("--------")
-    # IO.puts("Route:")
-    # IO.puts(" Old: #{Kernel.inspect(old_route)} \n vs \n New: #{Kernel.inspect(ideal)}")
-    # IO.puts("Ranking:")
-    # IO.puts(" Old: #{Kernel.inspect(old_ranking)} \n vs \n New: #{Kernel.inspect(ranking)}")
-    # IO.puts("Score:")
-    # IO.puts(" Old: #{Kernel.inspect(old_score)} \n vs \n New: #{Kernel.inspect(score)}")
-    # IO.puts("Timediff:")
-    # IO.puts(" Old: #{Kernel.inspect(old_timediff)} \n vs \n New: #{Kernel.inspect(timediff)}")
-    # IO.puts("Accepted:")
-    # IO.puts(" Old: #{Kernel.inspect(old_accept)} \n vs \n New: #{Kernel.inspect(accept)}")
-    # IO.puts("--------")
+    {ranking, timediff, score, accept} = build_score(tryroute, start_building, target_building)
 
     case previous do
       {nil, nil, nil, nil, false} ->
         cond do
-          Enum.empty?(ranking) && accept ->
-            build_map(ideal, delivery)
+          (Enum.empty?(ranking) || score == 1) && accept ->
+            route |> build_map(delivery)
           score > 1 ->
-            perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
-          accept ->
-            build_map(ideal, delivery)
+            perform_calculation(init_graph, start_building, target_building, delivery, {route, ranking, score, timediff, accept})
           true ->
             raise "Route calculation reached unknown state"
         end
       {_, _, _, _, _} ->
         # TODO or if old route not accepted and new route accepted
-        if timediff <= old_timediff * (1+old_score/10) && score < old_score do
-          perform_calculation(init_graph, start_building, target_building, delivery, {ideal, ranking, score, timediff, accept})
+        if timediff <= old_timediff * (1+old_score/5) && score < old_score do
+          perform_calculation(init_graph, start_building, target_building, delivery, {route, ranking, score, timediff, accept})
         else
           case old_ranking do
             [_ | []] ->
@@ -125,11 +95,13 @@ defmodule Routing.Routecalc do
                   old_route |> build_map(delivery)
                 !accept ->
                   raise "No efficient route was found"
+                  # NOTE experimental
+                  # perform_calculation(init_graph, start_building, target_building, delivery, {nil, nil, nil, nil, false})
               end
             _ ->
               {to_delete, old_ranking} = Enum.split(old_ranking, 1)
-              # TODO change the deletion from Enum.at(... to the previous item of the to_delete item in the route array (the problem is that the ranking array is sorted
-              init_graph = GenServer.call(:graphrepo, {:delete_edges, Keyword.keys(to_delete), Enum.at(old_ranking, 0) |> elem(0), init_graph})
+              to_delete = Keyword.keys(to_delete)
+              init_graph = GenServer.call(:graphrepo, {:delete_edges, to_delete, prev_hop(old_route, Enum.at(to_delete, 0)), init_graph})
               perform_calculation(init_graph, start_building, target_building, delivery, {old_route, old_ranking, old_score, old_timediff, old_accept})
           end
         end
@@ -138,10 +110,31 @@ defmodule Routing.Routecalc do
     MatchError ->
       if old_route != nil && old_accept do
         old_route |> build_map(delivery)
-      else
-        raise "No efficient route was found"
       end
   end
+
+  def atom(name) do
+    String.to_existing_atom(name)
+  rescue
+    ArgumentError -> String.to_atom(name)
+  end
+
+  # TODO delivery is always gonna be true
+  def get_route(graph, from, to, start_hops \\ nil, end_hops \\ nil) do
+    case Graph.shortest_path(graph, from, to) do
+      [] -> nil
+      route ->
+        tryroute = if start_hops == nil || end_hops == nil do
+          route |> build_map(true) |> Routerepo.try_route(true)
+        else
+          route = complete_route(route, start_hops, end_hops)
+          build_map(route, true) |> Routerepo.try_route(false)
+        end
+        {route, tryroute}
+    end 
+  end
+
+  ### Edge Hop Processing ###
 
   # Requires from and to to be in :dp<number> format
   def edge_hop_processing(graph, target, type, time \\ Timex.now) do
@@ -158,19 +151,19 @@ defmodule Routing.Routecalc do
   # TODO filter out options that have a -20 hivecosts and consider drones with less charge
   # Basically update to the new hivecost system
   def get_edge_hop_pairs(graph, id, type, time) do
-    case graph.edges |> Map.get(id) do
+    case neighbors(graph, id) do
       nil ->
         {:err, "Target unreachable"}
       neighbors ->
-        neighbors = neighbors
-                    |> MapSet.to_list
-                    |> Map.new(fn(x) -> {x[:to], x[:costs]} end)
-        predictions = neighbors
-                      |> Map.keys
-                      |> Droneportrepo.get_predictions_for(Timex.to_unix(time))
+        predictions = Droneportrepo.get_predictions_for(Map.keys(neighbors), Timex.to_unix(time))
         {pairs, unreachable} = get_pairs(Map.keys(neighbors), Map.keys(predictions), neighbors, predictions, type) |> filter_for_best_option
         {:ok, pairs, unreachable}
     end
+  end
+
+  defp neighbors(graph, id) do
+    (for to <- Graph.get_neighbors(graph, id), do: Graph.get_edge(graph, id, to))
+    |> Map.new(fn(x) -> {elem(x, 1), elem(x, 2)} end)
   end
 
   defp get_pairs([], _p, _neighbors, _predictions, _type), do: %{}
@@ -180,8 +173,8 @@ defmodule Routing.Routecalc do
 
   defp match([], _to, _neighbors, _predictions, _type), do: []
   defp match([h | t], to, neighbors, predictions, type) do
-    # TODO consider a different approach for cost calculation where costs do not skyrocket
     # NOTE differenciating here is important because end hops have taking and giving switched around
+    # TODO consider a different approach for cost calculation where costs do not skyrocket
     # TODO combine this with heuristic costs
     # TODO dont use give but rather pass_packet factor (as the drone port that is given the drone will also lose one)
     {takefac, givefac} = case type do
@@ -192,7 +185,7 @@ defmodule Routing.Routecalc do
         {Droneportrepo.get_predicted_cost_factor(predictions, h, :give),
           Droneportrepo.get_predicted_cost_factor(predictions, to, :take)}
     end
-    result = if neighbors[h] + neighbors[to] < Dronerepo.get_dronerange(0) do
+    result = if neighbors[h] + neighbors[to] < Dronerepo.get_dronerange(0) && takefac < 20 do
       [%{from: h,
         costs: neighbors[h] * takefac + neighbors[to] * givefac,
         dist_to: neighbors[to],
@@ -249,6 +242,8 @@ defmodule Routing.Routecalc do
     result
   end
 
+  ### Build Route ###
+
   defp complete_route(route, start_hops, end_hops) do
     add_edge_hops(route, start_hops, :start) |> add_edge_hops(end_hops, :end)
   end
@@ -258,21 +253,44 @@ defmodule Routing.Routecalc do
     tid = atom("dp#{target}") 
     first_edge = Graph.get_edge(graph, Enum.at(route, 0), Enum.at(route, 1))
     start = graph.edges[sid]
-            |> MapSet.to_list
-            |> Enum.filter(fn(x) -> (x[:costs] + first_edge[:costs]) < Dronerepo.get_dronerange(0) end)
-            |> Enum.filter(fn(x) -> x[:to] != tid end)
+            |> Map.to_list        # elem1 are costs, elem0 are the ids
+            |> Enum.filter(fn(x) -> (elem(x, 1) + first_edge[:costs]) < Dronerepo.get_dronerange(0) end)
+            |> Enum.filter(fn(x) -> elem(x, 0) != tid end)
             |> Enum.at(0)
     last_edge = Graph.get_edge(graph, Enum.at(route, -2), Enum.at(route, -1))
     last = graph.edges[tid]
-           |> MapSet.to_list
-           |> Enum.filter(fn(x) -> (x[:costs] + last_edge[:costs]) < Dronerepo.get_dronerange(0) end)
-           |> Enum.filter(fn(x) -> x[:to] != sid end)
+           |> Map.to_list         # elem1 are costs, elem0 are the ids
+           |> Enum.filter(fn(x) -> (elem(x, 1) + last_edge[:costs]) < Dronerepo.get_dronerange(0) end)
+           |> Enum.filter(fn(x) -> elem(x, 0) != sid end)
            |> Enum.at(0)
     Enum.concat([start[:to]], route) |> Enum.concat([last[:to]])
   end
 
   def add_edge_hops(route, edge_hops, :start), do: [edge_hops[Enum.at(route, 1)][:from]] ++ route
   def add_edge_hops(route, edge_hops, :end), do: route ++ [edge_hops[Enum.at(route, -2)][:from]]
+
+  # Looks like this in the end:
+  # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
+  defp build_map(route, delivery) do
+    start_time = Timex.shift(Timex.now, [hours: 1])
+    %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
+  end
+  defp do_build_map([_from | []]), do: []
+  defp do_build_map([from | [to | _] = next]) do
+    from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "") |> String.to_integer
+    to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "") |> String.to_integer
+    [%{from: from, to: to}] ++ do_build_map(next)
+  end
+
+  ### Scoring for Routes ###
+
+  def build_score(route, start, target) do
+    ranking = get_factors(route["hop/_route"], start, target) |> Enum.sort_by(&(elem(&1, 1)))
+    timediff = Enum.at(route["hop/_route"], -1)["hop/endtime"] - Enum.at(route["hop/_route"], 0)["hop/starttime"]
+    score = Enum.count(ranking, fn(x) -> elem(x, 1) < 0 end) + 1
+    accept = Enum.count(ranking, fn(x) -> elem(x, 1) == -20 end) == 0
+    {ranking, timediff, score, accept}
+  end
 
   def get_factors([], _start, _target), do: []
   def get_factors([prev | [h | _t] = next], start, target) do
@@ -293,23 +311,8 @@ defmodule Routing.Routecalc do
     end
   end
 
-  # Looks like this in the end:
-  # %{is_delivery: true/false, route: [%{from: "id", to: "id"}]}
-  defp build_map(route, delivery) do
-    start_time = Timex.shift(Timex.now, [hours: 1])
-    %{is_delivery: delivery, time: start_time, route: do_build_map(route)}
-  end
-  defp do_build_map([_from | []]), do: []
-  defp do_build_map([from | [to | _] = next]) do
-    from = Regex.replace(~r/[A-Za-z]*/, "#{from}", "") |> String.to_integer
-    to   = Regex.replace(~r/[A-Za-z]*/, "#{to}", "") |> String.to_integer
-    [%{from: from, to: to}] ++ do_build_map(next)
-  end
-
-  def atom(name) do
-    String.to_existing_atom(name)
-  rescue
-    ArgumentError -> String.to_atom(name)
-  end
+  def prev_hop([dp | t], dp), do: Enum.at(t, 0)
+  def prev_hop([h | [dp | _t]], dp), do: h
+  def prev_hop([_h | t], dp), do: prev_hop(t, dp)
 end
 

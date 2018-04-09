@@ -6,7 +6,7 @@ defmodule Routing.RabbitMQ do
 
   @url Application.fetch_env!(:routing, :amqp_url)
 
-  def start_link(_opts), do: Supervisor.start_link(__MODULE__, :ok, [])
+  def start_link(_opts), do: Supervisor.start_link(__MODULE__, :ok, name: :rabbitmq)
 
   def init(_args) do
     Logger.debug("Starting AMQP workers with url #{@url}")

@@ -150,8 +150,8 @@ defmodule Routing.Graphrepo do
 
   # TODO nil is a workaround to enable first inserting of shop and cust
   defp add_nodes(hives, from, to) do
-    graph = Graph.add_node(Graph.new, atom("dp#{Map.get(to, "db/id")}"), %{costs: 0, label: "Target"})
-            |> Graph.add_node(atom("dp#{Map.get(from, "db/id")}"), %{costs: get_heur_costs_buildings(from, to), label: "Start"})
+    graph = Graph.add_node(Graph.new, atom("dp#{Map.get(to, "db/id")}"), costs: 0, label: "Target")
+            |> Graph.add_node(atom("dp#{Map.get(from, "db/id")}"), costs: get_heur_costs_buildings(from, to), label: "Start")
     add_nodes(hives, from, to, graph)
   end
   defp add_nodes([], _, _, graph), do: graph
@@ -160,7 +160,7 @@ defmodule Routing.Graphrepo do
     hive = Map.get(building, "building/hive")
     Graph.add_node(add_nodes(t, from, to, graph), 
                     atom("dp#{Map.get(building, "db/id")}"),
-                    %{costs: get_heur_costs_buildings(building, to), label: Map.get(hive, "hive/name")})
+                    costs: get_heur_costs_buildings(building, to), label: Map.get(hive, "hive/name"))
   end
 
   defp add_edges([], graph), do: graph
